@@ -47,9 +47,8 @@ export default function PublicEmailLoginPanel() {
   }
 
   return (
-    <section className="premium-card flat grid">
-      <p className="eyebrow">Email sign in</p>
-      <h2>Access your tickets</h2>
+    <section className="role-login-form">
+      <div><p className="eyebrow">Role: Cinema patron</p><h2>Access your tickets</h2><p>We&apos;ll verify your email with a one-time code.</p></div>
       {step === 'EMAIL' ? (
         <>
           <p>Enter your email and we&apos;ll send a one-time code.</p>

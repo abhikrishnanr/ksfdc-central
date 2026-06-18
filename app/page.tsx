@@ -15,13 +15,12 @@ export default async function HomePage({ searchParams }: { searchParams?: Promis
   const { data: movies } = await getMovies();
   const { data: shows } = await getPublicShowtimes({ city });
   const { data: theatres } = await getTheatres();
-  const featured = movies[0] ?? null;
-  const featuredShow = featured ? shows.find((show) => show.movieId === featured.id) : null;
+  const featuredSlides = movies.slice(0, 5).map((movie) => ({ movie, show: shows.find((show) => show.movieId === movie.id) ?? null }));
 
   return (
     <section className="ksfdc-home-grid">
       <div className="home-main-column">
-        <HeroCarousel movie={featured} show={featuredShow} />
+        <HeroCarousel slides={featuredSlides} />
         <section className="feature-strip">
           <div><span><BadgeCheck /></span><strong>Official Portal</strong><small>Verified and secure</small></div>
           <div><span><MapPinned /></span><strong>Across Kerala</strong><small>Connected theatres</small></div>

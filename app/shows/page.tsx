@@ -3,7 +3,6 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { getPublicShowtimes, type PublicShowtimeSummary } from '../../lib/central-data';
 import { EmptyState, PageHeader } from '../../components/premium-ui';
-import { getPublicShowStatus } from '../../lib/public-copy';
 
 function formatTime(value: string) {
   return new Intl.DateTimeFormat('en-IN', { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
@@ -91,7 +90,6 @@ export default async function ShowsPage({ searchParams }: { searchParams?: Promi
                     </div>
                     <div className="showtime-strip">
                       {theatreGroup.shows.map((show) => {
-                        const status = getPublicShowStatus(show);
                         const canBook = show.bookingEnabled !== false && show.status === 'OPEN' && show.availableSeats > 0;
                         return canBook ? (
                           <Link className="showtime-chip dark" href={`/book/${show.showId}`} key={show.showId}>
@@ -101,7 +99,7 @@ export default async function ShowsPage({ searchParams }: { searchParams?: Promi
                         ) : (
                           <span className="showtime-chip dark disabled" key={show.showId}>
                             {formatTime(show.showTime)}
-                            <small>{status.label}</small>
+                            <small>Temporarily unavailable</small>
                           </span>
                         );
                       })}

@@ -292,11 +292,13 @@ export default function PublicHeader() {
         <span className="brand-mark">KO</span>
         <span><span className="brand-title">KSFDC Operations</span><br /><span className="brand-subtitle">Theatre official portal</span></span>
       </Link>
-      <nav className="topnav" aria-label="Theatre official navigation">
-        {nav.map((item) => item.href === '/admin/logout'
-          ? <button className="nav-pill" key={item.href} type="button" onClick={officialLogout}>{item.label}</button>
-          : <Link className="nav-pill" key={item.href} href={item.href}>{item.label}</Link>)}
-      </nav>
+      {pathname === '/admin/login' ? null : (
+        <nav className="topnav" aria-label="Theatre official navigation">
+          {nav.map((item) => item.href === '/admin/logout'
+            ? <button className="nav-pill" key={item.href} type="button" onClick={officialLogout}>{item.label}</button>
+            : <Link className="nav-pill" key={item.href} href={item.href}>{item.label}</Link>)}
+        </nav>
+      )}
     </header>
   );
 }

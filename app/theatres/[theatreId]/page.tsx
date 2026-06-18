@@ -2,9 +2,8 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { EmptyState, PageHeader, StatusBadge } from '../../../components/premium-ui';
+import { EmptyState, PageHeader } from '../../../components/premium-ui';
 import { getTheatreDetail } from '../../../lib/central-data';
-import { getPublicShowStatus } from '../../../lib/public-copy';
 
 function formatTime(value: string) {
   return new Intl.DateTimeFormat('en-IN', { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
@@ -30,8 +29,7 @@ export default async function TheatreDetailPage({ params }: { params: Promise<{ 
       {!theatre.showtimes.length ? <EmptyState title="No shows today"><p>Showtimes for this theatre will appear here.</p></EmptyState> : null}
       <div className="public-theatre-show-list">
         {theatre.showtimes.map((show) => {
-          const status = getPublicShowStatus(show);
-          const canBook = show.status === 'OPEN' && show.availableSeats > 0;
+          const canBook = show.bookingEnabled !== false && show.status === 'OPEN' && show.availableSeats > 0;
           return (
             <article className="public-show-row" key={show.showId}>
               <div>
@@ -44,7 +42,12 @@ export default async function TheatreDetailPage({ params }: { params: Promise<{ 
                   {formatTime(show.showTime)}
                   <small>Book - {show.availableSeats} seats</small>
                 </Link>
-              ) : <StatusBadge tone={status.tone}>{status.label}</StatusBadge>}
+              ) : (
+                <span className="showtime-chip dark disabled" aria-disabled="true">
+                  {formatTime(show.showTime)}
+                  <small>Temporarily unavailable</small>
+                </span>
+              )}
             </article>
           );
         })}

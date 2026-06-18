@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
+import { LayoutGrid } from 'lucide-react';
+import type { BookingShowDetail } from '../../lib/central-data';
+import TicketSeatLayoutModal from './TicketSeatLayoutModal';
 
 export type ShareableTicketSeatGroup = {
   zone: string;
@@ -41,8 +44,9 @@ function statusLabel(value: string) {
   return value === 'CONFIRMED' ? 'Confirmed' : value.replaceAll('_', ' ').toLowerCase().replace(/^\w/, (letter) => letter.toUpperCase());
 }
 
-export default function ShareableTicketCard({ ticket }: { ticket: ShareableTicket }) {
+export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: ShareableTicket; seatLayout?: BookingShowDetail | null }) {
   const [qrDataUrl, setQrDataUrl] = useState('');
+  const [showSeatLayout, setShowSeatLayout] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const qrPayload = useMemo(() => JSON.stringify({
     bookingId: ticket.bookingId,
@@ -52,7 +56,8 @@ export default function ShareableTicketCard({ ticket }: { ticket: ShareableTicke
     verificationUrl: ticket.verificationUrl,
     verificationToken: ticket.verificationToken
   }), [ticket]);
-  const seatCount = ticket.groups.reduce((count, group) => count + group.seats.length, 0);
+  const ticketSeats = useMemo(() => Array.from(new Set(ticket.groups.flatMap((group) => group.seats))), [ticket.groups]);
+  const seatCount = ticketSeats.length;
 
   useEffect(() => {
     QRCode.toDataURL(qrPayload, { margin: 1, width: 240 }).then(setQrDataUrl).catch(() => setQrDataUrl(''));
@@ -128,7 +133,7 @@ export default function ShareableTicketCard({ ticket }: { ticket: ShareableTicke
           style={ticket.moviePosterUrl ? { backgroundImage: `linear-gradient(180deg, rgba(15,23,42,0), rgba(15,23,42,0.68)), url("${ticket.moviePosterUrl}")` } : undefined}
         >
           <div>
-            <p>Admit one</p>
+            <p>Admit {seatCount}</p>
             <h1>{ticket.movieTitle}</h1>
           </div>
         </div>
@@ -202,8 +207,10 @@ export default function ShareableTicketCard({ ticket }: { ticket: ShareableTicke
       <div className="ticket-actions no-print">
         <button type="button" className="action-button primary" onClick={downloadTicket}>Download ticket</button>
         <button type="button" className="action-button" onClick={shareTicket}>Share ticket</button>
+        {seatLayout ? <button type="button" className="action-button" onClick={() => setShowSeatLayout(true)}><LayoutGrid size={18} /> View seats</button> : null}
         <button type="button" className="action-button" onClick={() => window.print()}>Print</button>
       </div>
+      {showSeatLayout && seatLayout ? <TicketSeatLayoutModal show={seatLayout} ticketSeats={ticketSeats} onClose={() => setShowSeatLayout(false)} /> : null}
     </section>
   );
 }

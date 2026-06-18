@@ -2857,7 +2857,7 @@ p { color: var(--muted); line-height: 1.6; }
 
 .unified-seat-toolbar {
   position: absolute;
-  top: 0.75rem;
+  top: 3.65rem;
   right: 0.75rem;
   z-index: 24;
 }
@@ -2903,7 +2903,8 @@ p { color: var(--muted); line-height: 1.6; }
 .unified-zone-heading {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 0.65rem;
   border-bottom: 1px solid rgba(255,255,255,0.12);
   padding: 0 8px 9px;
   color: #d8dee9;
@@ -3001,8 +3002,31 @@ p { color: var(--muted); line-height: 1.6; }
 
 .unified-seat-legend {
   justify-content: center;
-  padding: 0.15rem 0.8rem 0.9rem;
+  min-height: 3rem;
+  padding: 0.65rem 0.8rem;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: #0d2228;
 }
+
+.unified-seat-shell:fullscreen,
+.unified-seat-shell.is-fullscreen {
+  width: 100vw;
+  height: 100dvh;
+  border: 0;
+  border-radius: 0;
+  background: #07090d;
+}
+
+.unified-seat-shell.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+}
+
+.unified-seat-shell:fullscreen .unified-seat-viewport,
+.unified-seat-shell.is-fullscreen .unified-seat-viewport { height: calc(100dvh - 3.2rem); }
+.unified-seat-shell:fullscreen .unified-seat-toolbar,
+.unified-seat-shell.is-fullscreen .unified-seat-toolbar { position: fixed; top: 3.7rem; right: 0.75rem; }
 
 .route-skeleton {
   display: grid;
@@ -3034,7 +3058,7 @@ p { color: var(--muted); line-height: 1.6; }
 
 @media (max-width: 720px) {
   .unified-seat-viewport { height: 63dvh; min-height: 460px; }
-  .unified-seat-toolbar { top: 0.55rem; right: 0.55rem; bottom: auto; }
+  .unified-seat-toolbar { top: 3.55rem; right: 0.55rem; bottom: auto; }
   .unified-seat-toolbar button,
   .unified-seat-toolbar span { min-width: 36px; min-height: 36px; }
   .unified-seat-viewport > .rzpp-mini-map { top: 0.55rem; left: 0.55rem; }
@@ -3057,6 +3081,57 @@ p { color: var(--muted); line-height: 1.6; }
   .skeleton-line,
   .skeleton-panel {
     animation: none;
+  }
+}
+
+/* Keep seat-map guidance and controls in separate rows at every viewport. */
+.unified-seat-toolbar {
+  position: relative;
+  inset: auto;
+  justify-content: flex-end;
+  min-height: 3.25rem;
+  padding: 0.45rem 0.65rem;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: #09161b;
+}
+
+.seat-fullscreen-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.38rem;
+  padding-inline: 0.7rem;
+}
+
+.seat-fullscreen-button small {
+  color: inherit;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.unified-seat-shell:fullscreen .unified-seat-toolbar,
+.unified-seat-shell.is-fullscreen .unified-seat-toolbar {
+  position: relative;
+  inset: auto;
+}
+
+.unified-seat-shell:fullscreen .unified-seat-viewport,
+.unified-seat-shell.is-fullscreen .unified-seat-viewport {
+  height: calc(100dvh - 7.1rem);
+}
+
+@media (max-width: 720px) {
+  .seat-legend.public-dark.unified-seat-legend {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .unified-seat-toolbar {
+    position: relative;
+    inset: auto;
+    min-height: 3.1rem;
+    padding-inline: 0.45rem;
   }
 }
 
@@ -3455,6 +3530,12 @@ body:has(.checker-login-page) .page-frame { width: 100%; max-width: none; paddin
 }
 
 .hero-movie-copy { gap: 0.8rem; padding-left: 4.5rem; }
+.hero-poster-link { position: absolute; inset: 0; z-index: 0; }
+.hero-movie-copy,
+.hero-arrow,
+.hero-dots { z-index: 2; }
+.hero-actions { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+.hero-details-link { display: inline-flex; align-items: center; min-height: 2.65rem; border-bottom: 2px solid var(--portal-lagoon); padding: 0.65rem 0.25rem; color: #eafff8; font-weight: 850; }
 .hero-movie-copy p { color: var(--portal-marigold); letter-spacing: 0.18em; }
 .hero-movie-copy h1 { max-width: 720px; color: #fff8e9; font-size: 4.7rem; line-height: 0.94; text-shadow: 0 5px 28px rgba(0,0,0,0.75); }
 .hero-movie-copy span { color: #d6e9e9; letter-spacing: 0.06em; }
@@ -3468,6 +3549,8 @@ body:has(.checker-login-page) .page-frame { width: 100%; max-width: none; paddin
 .hero-arrow { display: grid; place-items: center; color: #fff; background: rgba(7, 22, 27, 0.82); }
 .hero-arrow svg { width: 22px; }
 .hero-dots .active { background: var(--portal-coral); }
+.hero-dots button { width: 0.7rem; height: 0.7rem; border-radius: 50%; padding: 0; background: rgba(255,255,255,0.72); }
+.hero-dots button.active { width: 1.4rem; border-radius: 7px; background: var(--portal-coral); }
 
 .quick-book-card,
 .side-info-card,
@@ -3545,6 +3628,10 @@ body:has(.checker-login-page) .page-frame { width: 100%; max-width: none; paddin
   .ksfdc-home-grid { grid-template-columns: minmax(0, 1fr); gap: 0.85rem; }
   .ksfdc-home-grid > .home-main-column > *,
   .ksfdc-home-grid > .home-sidebar > * { grid-column: 1; width: 100%; min-width: 0; }
+  .now-showing-section { order: 1; }
+  .quick-book-card { order: 2; }
+  .theatre-network-card { order: 3; }
+  .notices-card { order: 4; }
   .ksfdc-hero-carousel { min-height: 370px; border-left-width: 1px; padding: 1rem; background-position: center 18%; }
   .hero-movie-copy { gap: 0.65rem; padding: 0 0 1.5rem; }
   .hero-movie-copy h1 { max-width: 94%; font-size: 2.65rem; line-height: 0.98; }
@@ -3567,4 +3654,100 @@ body:has(.checker-login-page) .page-frame { width: 100%; max-width: none; paddin
 @media print {
   .public-topbar,
   .public-footer { display: none !important; }
+}
+
+/* Shared portal surfaces */
+.hero-panel,
+.premium-card,
+.glass-panel,
+.movie-show-section,
+.movie-booking-mini,
+.public-show-row,
+.public-info-card,
+.theatre-show-card,
+.same-day-showtimes,
+.movie-detail-book-bar {
+  border-color: rgba(130, 219, 205, 0.18);
+  color: #f8ffff;
+  background: #0d2228;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.24);
+}
+
+.hero-panel { border-top: 3px solid var(--portal-coral); }
+.premium-card { border-top-color: rgba(255,200,87,0.42); }
+.page-header h1,
+.premium-card h1,
+.premium-card h2,
+.glass-panel h2 { color: #fff8e9; }
+.page-header > p:not(.eyebrow),
+.premium-card > p,
+.glass-panel > p { color: #b9c9cd; }
+.eyebrow,
+.public-eyebrow { color: var(--portal-marigold); }
+.action-button.primary { color: #171105; background: var(--portal-marigold); }
+.action-button.primary:hover { border-color: #ffe09a; color: #171105; background: #ffda86; }
+.action-button { border-color: rgba(130,219,205,0.22); background: #102a31; }
+.date-tab-bar a { border-color: rgba(130,219,205,0.2); background: #0d2228; }
+.date-tab-bar a.active { color: #171105; background: var(--portal-marigold); }
+.public-chip.strong { border-color: rgba(41,211,173,0.42); color: #baffed; background: rgba(41,211,173,0.1); }
+.public-booking-topbar { color: #f8ffff; border-color: rgba(130,219,205,0.2); background: rgba(7,22,27,0.94); }
+.public-booking-topbar span { color: #b9c9cd; }
+
+.role-login-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+  width: min(1180px, 100%);
+  min-height: min(720px, calc(100dvh - 11rem));
+  margin-inline: auto;
+  overflow: hidden;
+  border: 1px solid rgba(130,219,205,0.2);
+  border-radius: 8px;
+  background: #07161b;
+  box-shadow: 0 28px 80px rgba(0,0,0,0.4);
+}
+
+.role-login-welcome {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 0.9rem;
+  padding: 3.5rem;
+  border-right: 1px solid rgba(130,219,205,0.14);
+  background: linear-gradient(145deg, rgba(41,211,173,0.12), rgba(255,114,94,0.08)), #081b21;
+}
+.role-login-welcome h1 { max-width: 680px; margin: 0; color: #fff8e9; font-size: 3.8rem; line-height: 0.98; }
+.role-login-welcome > p:not(.eyebrow) { max-width: 620px; margin: 0; color: #c4d5d7; font-size: 1.02rem; line-height: 1.7; }
+.role-login-icon { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 8px; color: #07161b; background: var(--portal-marigold); }
+.role-login-features { display: grid; gap: 0.55rem; margin-top: 1rem; }
+.role-login-features span { display: flex; align-items: center; gap: 0.55rem; color: #baffed; font-weight: 750; }
+.role-login-features svg { width: 18px; color: var(--portal-lagoon); }
+
+.role-login-form {
+  display: grid;
+  align-content: center;
+  gap: 1rem;
+  padding: 3rem;
+  background: #0d2228;
+}
+.role-login-form h2 { margin: 0.2rem 0; color: #fff8e9; font-size: 2rem; }
+.role-login-form p { color: #b9c9cd; }
+.role-login-form label { display: grid; gap: 0.45rem; color: #eafffa; font-size: 0.83rem; font-weight: 800; }
+.role-login-form input { min-height: 50px; border-color: rgba(130,219,205,0.24); background: #071a20; }
+.role-login-form .action-button { width: 100%; min-height: 50px; }
+.role-login-form small { color: #899da1; }
+.role-login-error { border-left: 4px solid var(--portal-coral); padding: 0.8rem 1rem; color: #ffd7d0; background: rgba(255,114,94,0.1); }
+.patron-role-login .role-login-icon { background: var(--portal-lagoon); }
+.theatre-role-login .role-login-icon { background: var(--portal-marigold); }
+
+.checker-login-page { border-color: rgba(130,219,205,0.2); background: #07161b; }
+.checker-login-intro { background: linear-gradient(145deg, rgba(41,211,173,0.12), rgba(255,114,94,0.08)), #081b21; }
+.checker-brand-icon,
+.checker-primary-button { background: var(--portal-marigold); }
+.checker-login-form { background: #0d2228; }
+
+@media (max-width: 820px) {
+  .role-login-page { grid-template-columns: 1fr; min-height: 0; }
+  .role-login-welcome { min-height: 310px; padding: 2rem 1.25rem; border-right: 0; border-bottom: 1px solid rgba(130,219,205,0.14); }
+  .role-login-welcome h1 { font-size: 2.55rem; }
+  .role-login-form { padding: 1.5rem 1.25rem 2rem; }
 }

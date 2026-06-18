@@ -9,7 +9,7 @@ export default function ShowtimeStrip({ showtimes }: { showtimes: CentralMovieSh
   return (
     <div className="showtime-strip">
       {showtimes.map((show) => (
-        <ShowtimeChip key={show.showId} href={`/book/${show.showId}`} label={formatTime(show.showTime)} status={show.status === 'OPEN' ? undefined : 'Unavailable'} />
+        <ShowtimeChip key={show.showId} href={`/book/${show.showId}`} label={formatTime(show.showTime)} status={show.status === 'OPEN' && show.bookingEnabled !== false ? undefined : 'Temporarily unavailable'} />
       ))}
     </div>
   );

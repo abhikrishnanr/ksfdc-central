@@ -76,6 +76,7 @@ export interface CentralMovieShowtime {
   priceStartsAt: number | null;
   availableSeats?: number;
   format?: string | null;
+  bookingEnabled?: boolean;
 }
 
 export interface CentralMovieDetail extends CentralMovieSummary {

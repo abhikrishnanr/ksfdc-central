@@ -21,10 +21,10 @@ export default async function TicketCheckerLoginPage({ searchParams }: { searchP
         <div className="checker-security-note"><ShieldCheck size={18} /> Checker-only secure access</div>
       </div>
       <form action={loginAction} className="checker-login-form">
-        <div><p className="eyebrow">Ticket checker</p><h2>Sign in to a gate</h2></div>
+        <div><p className="eyebrow">Role: Ticket checker</p><h2>Welcome to the gate</h2><p>Sign in to begin admission for the selected theatre and show.</p></div>
         {params.error ? <div className="checker-inline-error">Invalid checker username or password.</div> : null}
         {params.loggedOut ? <div className="checker-inline-success">Signed out successfully.</div> : null}
-        <label>Username<input name="username" autoComplete="username" required autoFocus /></label>
+        <label>Username<input name="username" autoComplete="username" required /></label>
         <label>Password<input name="password" type="password" autoComplete="current-password" required /></label>
         <button className="checker-primary-button" type="submit"><ScanLine size={19} /> Sign in</button>
         {process.env.NODE_ENV !== 'production' ? <small>Development account: ticketchecker / ChangeMe@123</small> : null}

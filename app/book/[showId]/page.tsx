@@ -49,27 +49,6 @@ export default async function CentralBookingPage({ params }: { params: Promise<{
         <StatusBadge tone={publicStatus.tone}>{publicStatus.label}</StatusBadge>
       </section>
 
-      <section className="movie-booking-hero public">
-        <div
-          className="movie-booking-poster"
-          style={show.moviePosterUrl ? { backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.45)), url("${show.moviePosterUrl}")` } : undefined}
-          aria-label={`${show.movieTitle} poster`}
-        />
-        <div className="page-header">
-          <p className="eyebrow">Choose your seats</p>
-          <h1>{show.movieTitle}</h1>
-          <p>{show.theatreName} - {show.screenName} - {formatTime(show.showTime)}</p>
-          <div className="meta-row">
-            <StatusBadge tone={publicStatus.tone}>{publicStatus.label}</StatusBadge>
-            {show.language ? <StatusBadge tone="neutral">{show.language}</StatusBadge> : null}
-            {show.certificate ? <StatusBadge tone="neutral">{show.certificate}</StatusBadge> : null}
-            {show.durationMinutes ? <StatusBadge tone="neutral">{show.durationMinutes} min</StatusBadge> : null}
-            {show.formats.map((format) => <StatusBadge tone="violet" key={format}>{format}</StatusBadge>)}
-            <Link className="action-button" href="/shows">All shows</Link>
-          </div>
-        </div>
-      </section>
-
       {show.bookingEnabled === false ? (
         <section className="booking-unavailable-panel" role="status" aria-live="polite">
           <p className="eyebrow">Booking unavailable</p>
@@ -91,6 +70,7 @@ export default async function CentralBookingPage({ params }: { params: Promise<{
             showTime: item.showTime,
             authorityMode: item.authorityMode,
             status: item.status,
+            bookingEnabled: item.showId === show.showId ? show.bookingEnabled : undefined,
             priceStartsAt: null
           }))} />
         </section>

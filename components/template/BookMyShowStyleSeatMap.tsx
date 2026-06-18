@@ -1,7 +1,7 @@
 'use client';
 
-import { Maximize2, Minus, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { Maximize2, Minimize2, Minus, Plus } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { MiniMap, TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
 import type { BookingShowDetail, SeatCell } from '../../lib/central-data';
 
@@ -41,7 +41,39 @@ export default function BookMyShowStyleSeatMap({
   onToggle: (cell: SeatCell) => void;
 }) {
   const [scale, setScale] = useState(1);
+  const [fullscreen, setFullscreen] = useState(false);
+  const shellRef = useRef<HTMLElement>(null);
   const groups = groupedRows(show);
+
+  useEffect(() => {
+    const onFullscreenChange = () => setFullscreen(document.fullscreenElement === shellRef.current);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    if (!fullscreen || document.fullscreenElement) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [fullscreen]);
+
+  async function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+    if (fullscreen) {
+      setFullscreen(false);
+      return;
+    }
+    try {
+      await shellRef.current?.requestFullscreen();
+      if (document.fullscreenElement !== shellRef.current) setFullscreen(true);
+    } catch {
+      setFullscreen(true);
+    }
+  }
 
   function hallContent(miniature = false) {
     return (
@@ -92,7 +124,10 @@ export default function BookMyShowStyleSeatMap({
   }
 
   return (
-    <section className="bms-seat-map-shell unified-seat-shell">
+    <section className={`bms-seat-map-shell unified-seat-shell${fullscreen ? ' is-fullscreen' : ''}`} ref={shellRef}>
+      <div className="seat-legend public-dark unified-seat-legend" aria-label="Seat status legend">
+        {Object.entries(STATUS_STYLES).map(([status, config]) => <span className={`seat-legend-item ${config.className}`} key={status}>{config.label}</span>)}
+      </div>
       <TransformWrapper
         minScale={0.3}
         maxScale={2.4}
@@ -100,8 +135,8 @@ export default function BookMyShowStyleSeatMap({
         centerZoomedOut
         limitToBounds={false}
         wheel={{ step: 0.12 }}
-        panning={{ velocityDisabled: false, excluded: ['button'] }}
-        pinch={{ step: 5, excluded: ['button'] }}
+        panning={{ velocityDisabled: false, excluded: scale > 1 ? [] : ['button'] }}
+        pinch={{ step: 5 }}
         doubleClick={{ mode: 'toggle', step: 0.55, excluded: ['button'] }}
         onTransform={(_, nextState) => setScale(nextState.scale)}
         onInit={({ instance, setTransform }) => {
@@ -122,6 +157,10 @@ export default function BookMyShowStyleSeatMap({
               <span>{Math.round(scale * 100)}%</span>
               <button type="button" aria-label="Zoom in" title="Zoom in" onClick={() => zoomIn(0.16)}><Plus size={17} /></button>
               <button type="button" aria-label="Fit whole hall" title="Fit whole hall" onClick={() => centerView(Math.max(0.3, Math.min(0.92, (window.innerWidth - 32) / 1080)), 180)}><Maximize2 size={16} /></button>
+              <button className="seat-fullscreen-button" type="button" aria-label={fullscreen ? 'Exit fullscreen seat map' : 'Open fullscreen seat map'} title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'} onClick={() => void toggleFullscreen()}>
+                {fullscreen ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+                <small>{fullscreen ? 'Exit' : 'Fullscreen'}</small>
+              </button>
             </div>
             <div className="unified-seat-viewport">
               <TransformComponent wrapperClass="unified-transform-wrapper" contentClass="unified-transform-content">
@@ -141,9 +180,6 @@ export default function BookMyShowStyleSeatMap({
           </>
         )}
       </TransformWrapper>
-      <div className="seat-legend public-dark unified-seat-legend">
-        {Object.entries(STATUS_STYLES).map(([status, config]) => <span className={`seat-legend-item ${config.className}`} key={status}>{config.label}</span>)}
-      </div>
     </section>
   );
 }

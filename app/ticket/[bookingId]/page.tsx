@@ -5,6 +5,7 @@ import { ensureCentralPaymentTables } from '../../../lib/razorpay';
 import { ensureCentralSyncInbox } from '../../../lib/sync';
 import ShareableTicketCard, { type ShareableTicketSeatGroup } from '../../../components/template/ShareableTicketCard';
 import { createTicketVerificationToken } from '../../../lib/ticket-verification';
+import { getBookingShow } from '../../../lib/central-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,6 +66,7 @@ export default async function CentralTicketPage({ params }: { params: Promise<{ 
     verificationToken: token,
     groups: Array.from(groups.values()) as ShareableTicketSeatGroup[]
   };
+  const { data: seatLayout } = await getBookingShow(showId);
 
-  return <ShareableTicketCard ticket={ticket} />;
+  return <ShareableTicketCard ticket={ticket} seatLayout={seatLayout} />;
 }

@@ -7,6 +7,7 @@ import { RowDataPacket } from 'mysql2';
 import { PageHeader } from '../../../../components/premium-ui';
 import ShareableTicketCard, { type ShareableTicketSeatGroup } from '../../../../components/template/ShareableTicketCard';
 import { getCentralDbPool } from '../../../../lib/db';
+import { getBookingShow } from '../../../../lib/central-data';
 import { getPublicSession } from '../../../../lib/public-auth';
 import { ensureCentralSyncInbox } from '../../../../lib/sync';
 
@@ -60,15 +61,18 @@ export default async function ProfileTicketDetailPage({ params }: { params: Prom
   const showId = String(booking.showId);
   const token = ticketToken(String(booking.id), showId);
   const baseUrl = process.env.NEXT_PUBLIC_CENTRAL_APP_URL?.replace(/\/$/, '') ?? '';
+  const { data: seatLayout } = await getBookingShow(showId);
 
   return (
     <main className="grid" style={{ gap: 24 }}>
-      <PageHeader
-        eyebrow="Ticket confirmed"
-        title={String(booking.movieTitle)}
-        description={`${String(booking.theatreName)} - ${String(booking.screenName)} - ${formatTime(booking.showTime)}`}
-      />
-      <ShareableTicketCard ticket={{
+      <div className="no-print">
+        <PageHeader
+          eyebrow="Ticket confirmed"
+          title={String(booking.movieTitle)}
+          description={`${String(booking.theatreName)} - ${String(booking.screenName)} - ${formatTime(booking.showTime)}`}
+        />
+      </div>
+      <ShareableTicketCard seatLayout={seatLayout} ticket={{
         bookingId: String(booking.id),
         ticketNumber: `TKT-${String(booking.id).replace(/^BOOKING_/, '').slice(0, 12).toUpperCase()}`,
         showId,
@@ -87,7 +91,7 @@ export default async function ProfileTicketDetailPage({ params }: { params: Prom
         verificationToken: token,
         groups: groups as ShareableTicketSeatGroup[]
       }} />
-      <Link className="action-button" href="/profile/tickets">Back to tickets</Link>
+      <Link className="action-button no-print" href="/profile/tickets">Back to tickets</Link>
     </main>
   );
 }
