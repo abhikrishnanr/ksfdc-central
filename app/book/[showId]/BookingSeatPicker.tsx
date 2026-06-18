@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { BadgeCheck, CreditCard, Frown, LoaderCircle, RadioTower, ShieldCheck, TicketCheck } from 'lucide-react';
 import type { BookingShowDetail, SeatCell } from '../../../lib/central-data';
 import BookMyShowStyleSeatMap from '../../../components/template/BookMyShowStyleSeatMap';
 import BookingSummaryBar from '../../../components/template/BookingSummaryBar';
 import SeatSelectionLayout from '../../../components/template/SeatSelectionLayout';
 
 type AuthStep = 'READY' | 'EMAIL' | 'OTP';
+type BookingProgressPhase = 'CONNECTING' | 'HOLDING' | 'HELD' | 'PAYMENT' | 'PAYMENT_SUCCESS' | 'CONFIRMING' | 'SUCCESS' | 'FAILED';
 
 type SelectedZoneGroup = {
   zone: string;
@@ -295,6 +297,59 @@ function BookingAlertModal({
   );
 }
 
+const PROGRESS_COPY: Record<BookingProgressPhase, { title: string; detail: string }> = {
+  CONNECTING: { title: 'Connecting to the theatre', detail: 'Checking the live seat desk securely.' },
+  HOLDING: { title: 'Holding your seats', detail: 'The theatre is locking your selection now.' },
+  HELD: { title: 'Seats held', detail: 'Your seats are protected while payment opens.' },
+  PAYMENT: { title: 'Going to payment', detail: 'Complete payment in the secure Razorpay window.' },
+  PAYMENT_SUCCESS: { title: 'Payment successful', detail: 'Your payment is confirmed.' },
+  CONFIRMING: { title: 'Sending confirmation to theatre', detail: 'Finalizing your ticket with the theatre.' },
+  SUCCESS: { title: "Here's your ticket", detail: 'Your booking is confirmed. Opening it now.' },
+  FAILED: { title: 'Payment did not complete', detail: 'No, no. Your ticket was not finalized.' }
+};
+
+function ProgressIcon({ phase }: { phase: BookingProgressPhase }) {
+  const props = { size: 46, strokeWidth: 1.8 };
+  if (phase === 'CONNECTING') return <RadioTower {...props} />;
+  if (phase === 'HOLDING') return <ShieldCheck {...props} />;
+  if (phase === 'HELD') return <BadgeCheck {...props} />;
+  if (phase === 'PAYMENT') return <CreditCard {...props} />;
+  if (phase === 'PAYMENT_SUCCESS') return <BadgeCheck {...props} />;
+  if (phase === 'CONFIRMING') return <LoaderCircle {...props} />;
+  if (phase === 'SUCCESS') return <TicketCheck {...props} />;
+  return <Frown {...props} />;
+}
+
+function BookingProgressOverlay({
+  phase,
+  detail,
+  onClose
+}: {
+  phase: BookingProgressPhase | null;
+  detail?: string | null;
+  onClose: () => void;
+}) {
+  if (!phase) return null;
+  const celebratory = phase === 'PAYMENT_SUCCESS' || phase === 'SUCCESS';
+  const failed = phase === 'FAILED';
+
+  return (
+    <div className="booking-progress-overlay" role="status" aria-live="assertive" aria-label={PROGRESS_COPY[phase].title}>
+      <div className={`booking-progress-panel phase-${phase.toLowerCase()}`}>
+        {celebratory ? <div className="booking-confetti" aria-hidden="true">{Array.from({ length: 20 }, (_, index) => <i key={index} style={{ '--particle': index } as React.CSSProperties} />)}</div> : null}
+        <div className={`booking-progress-icon ${failed ? 'failure' : ''}`}><ProgressIcon phase={phase} /></div>
+        <div className="booking-progress-copy">
+          <span>{failed ? 'Booking paused' : 'Secure booking'}</span>
+          <h2>{PROGRESS_COPY[phase].title}</h2>
+          <p>{detail || PROGRESS_COPY[phase].detail}</p>
+        </div>
+        {!failed ? <div className="booking-progress-track"><span /></div> : null}
+        {failed ? <button type="button" className="action-button primary" onClick={onClose}>Choose another option</button> : null}
+      </div>
+    </div>
+  );
+}
+
 export default function BookingSeatPicker({ show }: { show: BookingShowDetail }) {
   const router = useRouter();
 
@@ -310,6 +365,8 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
 
   const [holdExpiresAt, setHoldExpiresAt] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [progressPhase, setProgressPhase] = useState<BookingProgressPhase | null>(null);
+  const [progressDetail, setProgressDetail] = useState<string | null>(null);
 
   const [isPending, startTransition] = useTransition();
 
@@ -339,14 +396,16 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
 
   useEffect(() => {
     if (!holdExpiresAt || holdRemainingMs > 0) return;
-
-    setHoldExpiresAt(null);
-    setSelected([]);
-    setAuthStep('READY');
-    setAuthModalOpen(false);
-    setMessage(null);
-    setAlert({ title: 'Seat hold expired', message: 'Your seat hold expired. Please select seats again.' });
-    router.refresh();
+    const timer = window.setTimeout(() => {
+      setHoldExpiresAt(null);
+      setSelected([]);
+      setAuthStep('READY');
+      setAuthModalOpen(false);
+      setMessage(null);
+      setAlert({ title: 'Seat hold expired', message: 'Your seat hold expired. Please select seats again.' });
+      router.refresh();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [holdExpiresAt, holdRemainingMs, router]);
 
   function closeAuthModal() {
@@ -403,8 +462,11 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
     setAuthModalOpen(false);
     setAuthStep('READY');
     setMessage('Seats are being held while payment starts.');
+    setProgressDetail(null);
+    setProgressPhase('CONNECTING');
 
     startTransition(async () => {
+      const holdingTimer = window.setTimeout(() => setProgressPhase('HOLDING'), 450);
       const response = await fetch('/api/bookings/hold', {
         method: 'POST',
         headers: {
@@ -419,12 +481,14 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
       });
 
       const payload = await response.json();
+      window.clearTimeout(holdingTimer);
 
       if (!response.ok) {
         if (payload.reason === 'PUBLIC_EMAIL_VERIFICATION_REQUIRED') {
           setAuthStep('EMAIL');
           setAuthModalOpen(true);
           setMessage('Please verify your email to continue.');
+          setProgressPhase(null);
           return;
         }
 
@@ -433,10 +497,12 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
           title: 'Seats unavailable',
           message: payload.message ?? payload.error ?? 'Your selected seats are no longer available. Please choose again.'
         });
+        setProgressPhase(null);
         return;
       }
 
       setHoldExpiresAt(payload.expiresAt ?? null);
+      setProgressPhase('HELD');
 
       const orderResponse = await fetch('/api/payments/razorpay/order', {
         method: 'POST',
@@ -458,6 +524,8 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
           title: 'Payment unavailable',
           message: orderPayload.message ?? orderPayload.error ?? 'Payment could not start. Your seats were released.'
         });
+        setProgressDetail(orderPayload.message ?? orderPayload.error ?? 'Payment could not start.');
+        setProgressPhase('FAILED');
         return;
       }
 
@@ -468,6 +536,8 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
         setHoldExpiresAt(null);
         setMessage(null);
         setAlert({ title: 'Payment unavailable', message: 'Payment could not start. Please try again.' });
+        setProgressDetail('The secure payment window could not load.');
+        setProgressPhase('FAILED');
         return;
       }
 
@@ -490,6 +560,9 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
           showId: show.showId
         },
         handler: async (razorpayResponse: Record<string, string>) => {
+          setProgressPhase('PAYMENT_SUCCESS');
+          await new Promise((resolve) => window.setTimeout(resolve, 650));
+          setProgressPhase('CONFIRMING');
           const verifyResponse = await fetch('/api/payments/razorpay/verify', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
@@ -509,12 +582,16 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
               title: 'Booking needs review',
               message: verifyPayload.message ?? verifyPayload.error ?? 'Payment confirmed, but your ticket needs support review.'
             });
+            setProgressDetail(verifyPayload.message ?? verifyPayload.error ?? 'Payment succeeded, but theatre confirmation needs review.');
+            setProgressPhase('FAILED');
             return;
           }
 
           setSelected([]);
           setHoldExpiresAt(null);
-          router.push(`/ticket/${verifyPayload.bookingId}`);
+          setProgressDetail(null);
+          setProgressPhase('SUCCESS');
+          window.setTimeout(() => router.push(`/ticket/${verifyPayload.bookingId}`), 900);
         },
         modal: {
           ondismiss: async () => {
@@ -522,10 +599,13 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
             setHoldExpiresAt(null);
             setMessage(null);
             setAlert({ title: 'Payment cancelled', message: 'Payment cancelled. Your seats were released.' });
+            setProgressDetail('Payment was cancelled. Your held seats have been released.');
+            setProgressPhase('FAILED');
           }
         }
       });
 
+      setProgressPhase('PAYMENT');
       checkout.open();
     });
   }
@@ -685,6 +765,12 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
         title={alert?.title ?? ''}
         message={alert?.message ?? ''}
         onClose={() => setAlert(null)}
+      />
+
+      <BookingProgressOverlay
+        phase={progressPhase}
+        detail={progressDetail}
+        onClose={() => { setProgressPhase(null); setProgressDetail(null); }}
       />
     </SeatSelectionLayout>
   );

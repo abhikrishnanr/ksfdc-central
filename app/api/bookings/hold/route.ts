@@ -6,6 +6,7 @@ import { LocalTheatreApiError, LOCAL_THEATRE_ERROR_MESSAGES, holdSeatsInLocal } 
 import { normalizeAuthorityMode } from '../../../../lib/authority-mode';
 import { getPublicSession, publicOtpEnabled } from '../../../../lib/public-auth';
 import { authorityUnavailablePayload, getBookingAuthorityDecision } from '../../../../lib/booking-authority';
+import { ensureCentralSeatItemKeys } from '../../../../lib/sync';
 
 interface HoldPayload {
   showId?: string;
@@ -53,8 +54,9 @@ async function mirrorLocalHold(input: {
   idempotencyKey: string;
   customerName: string | null;
   expiresAt: string;
+  seatRows?: CentralSeatMirrorRow[];
 }) {
-  const seatRows = await getSeatMirrorRows(input.showId, input.layoutId, input.seatIds);
+  const seatRows = input.seatRows ?? await getSeatMirrorRows(input.showId, input.layoutId, input.seatIds);
   if (seatRows.length !== input.seatIds.length || seatRows.some((seat) => Boolean(seat.isBlocked) || seat.itemType === 'BLOCKED')) {
     throw new Error('Unable to mirror local hold because one or more seats are not present in the central layout mirror.');
   }
@@ -68,14 +70,12 @@ async function mirrorLocalHold(input: {
        ON DUPLICATE KEY UPDATE expires_at = VALUES(expires_at), status = IF(status = 'CONFIRMED', status, 'ACTIVE')`,
       [input.holdId, input.showId, input.idempotencyKey, input.customerName, new Date(input.expiresAt)]
     );
-    for (const seat of seatRows) {
-      await connection.query(
-        `INSERT INTO central_seat_hold_items (hold_id, show_id, seat_id, zone, amount)
-         VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE zone = VALUES(zone), amount = VALUES(amount)`,
-        [input.holdId, input.showId, seat.seatId, seat.zone, seat.amount]
-      );
-    }
+    await connection.query(
+      `INSERT INTO central_seat_hold_items (hold_id, show_id, seat_id, zone, amount)
+       VALUES ?
+       ON DUPLICATE KEY UPDATE zone = VALUES(zone), amount = VALUES(amount)`,
+      [seatRows.map((seat) => [input.holdId, input.showId, seat.seatId, seat.zone, seat.amount])]
+    );
     await connection.commit();
 
     return seatRows.reduce((sum, seat) => sum + Number(seat.amount), 0);
@@ -88,6 +88,7 @@ async function mirrorLocalHold(input: {
 }
 
 export async function POST(request: NextRequest) {
+  await ensureCentralSeatItemKeys();
   const payload = await request.json() as HoldPayload;
   const showId = payload.showId;
   const seatIds = [...new Set(payload.seatIds ?? [])];
@@ -98,7 +99,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'showId and at least one seatId are required.' }, { status: 400 });
   }
 
-  const preDecision = await getBookingAuthorityDecision({ showId });
+  const [preDecision, publicSession] = await Promise.all([
+    getBookingAuthorityDecision({ showId }),
+    getPublicSession()
+  ]);
   if (!preDecision) {
     return NextResponse.json({ error: 'Show not found.' }, { status: 404 });
   }
@@ -106,7 +110,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(authorityUnavailablePayload(preDecision), { status: preDecision.authorityMode === 'LOCAL_AUTHORITY_ONLINE' ? 503 : 409 });
   }
 
-  const publicSession = await getPublicSession();
   if (publicOtpEnabled() && !publicSession) {
     return NextResponse.json({
       error: 'Please verify your email to continue.',
@@ -130,7 +133,9 @@ export async function POST(request: NextRequest) {
       await connection.rollback();
       return NextResponse.json({ error: 'Show not found.' }, { status: 404 });
     }
-    const decision = await getBookingAuthorityDecision({
+    const authorityUnchanged = preDecision.theatreId === String(show.theatreId)
+      && preDecision.authorityMode === normalizeAuthorityMode(show.authorityMode);
+    const decision = authorityUnchanged ? preDecision : await getBookingAuthorityDecision({
       showId,
       theatreId: String(show.theatreId),
       authorityMode: show.authorityMode,
@@ -149,7 +154,10 @@ export async function POST(request: NextRequest) {
     if (decision.mustForwardToLocal) {
       await connection.rollback();
       try {
-        const localHold = await holdSeatsInLocal(showId, seatIds, 'CENTRAL_API', customerName ?? undefined, holdSeconds);
+        const [localHold, seatRows] = await Promise.all([
+          holdSeatsInLocal(showId, seatIds, 'CENTRAL_API', customerName ?? undefined, holdSeconds),
+          getSeatMirrorRows(showId, String(show.layoutId), seatIds)
+        ]);
         const totalAmount = await mirrorLocalHold({
           holdId: localHold.holdId,
           showId,
@@ -157,7 +165,8 @@ export async function POST(request: NextRequest) {
           seatIds: localHold.seatIds ?? seatIds,
           idempotencyKey,
           customerName,
-          expiresAt: localHold.expiresAt
+          expiresAt: localHold.expiresAt,
+          seatRows
         });
         return NextResponse.json({ holdId: localHold.holdId, expiresAt: localHold.expiresAt, expiresAtSeconds: holdSeconds, totalAmount, forwardedToLocal: true });
       } catch (error) {
@@ -205,9 +214,10 @@ export async function POST(request: NextRequest) {
     const holdId = `HOLD_${randomUUID()}`;
     const expiresAt = new Date(Date.now() + holdSeconds * 1000);
     await connection.query('INSERT INTO central_seat_holds (id, show_id, idempotency_key, customer_name, expires_at) VALUES (?, ?, ?, ?, ?)', [holdId, showId, idempotencyKey, customerName, expiresAt]);
-    for (const seat of seatRows) {
-      await connection.query('INSERT INTO central_seat_hold_items (hold_id, show_id, seat_id, zone, amount) VALUES (?, ?, ?, ?, ?)', [holdId, showId, seat.seatId, seat.zone, seat.amount]);
-    }
+    await connection.query(
+      'INSERT INTO central_seat_hold_items (hold_id, show_id, seat_id, zone, amount) VALUES ?',
+      [seatRows.map((seat) => [holdId, showId, seat.seatId, seat.zone, seat.amount])]
+    );
 
     await connection.commit();
     return NextResponse.json({ holdId, expiresAt: expiresAt.toISOString(), expiresAtSeconds: holdSeconds, totalAmount: seatRows.reduce((sum, seat) => sum + Number(seat.amount), 0) });

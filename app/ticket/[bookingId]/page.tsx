@@ -3,6 +3,7 @@ import { createHash } from 'crypto';
 import { notFound } from 'next/navigation';
 import { getCentralDbPool } from '../../../lib/db';
 import { ensureCentralPaymentTables } from '../../../lib/razorpay';
+import { ensureCentralSyncInbox } from '../../../lib/sync';
 import ShareableTicketCard, { type ShareableTicketSeatGroup } from '../../../components/template/ShareableTicketCard';
 
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,7 @@ function ticketToken(bookingId: string, showId: string) {
 export default async function CentralTicketPage({ params }: { params: Promise<{ bookingId: string }> }) {
   const { bookingId } = await params;
   await ensureCentralPaymentTables();
+  await ensureCentralSyncInbox();
   const [[booking]] = await getCentralDbPool().query<RowDataPacket[]>(
     `SELECT b.id, b.show_id AS showId, s.theatre_id AS theatreId, b.channel, b.status, b.total_amount AS totalAmount, b.created_at AS createdAt,
             m.title AS movieTitle, m.poster_url AS moviePosterUrl, t.name AS theatreName, sc.name AS screenName, s.show_time AS showTime,
@@ -33,14 +35,14 @@ export default async function CentralTicketPage({ params }: { params: Promise<{ 
   if (!booking) notFound();
 
   const [items] = await getCentralDbPool().query<RowDataPacket[]>(
-    'SELECT seat_id AS seatId, zone, amount FROM central_booking_items WHERE booking_id = ? ORDER BY zone ASC, seat_id ASC',
+    'SELECT seat_id AS seatId, MAX(zone) AS zone, MAX(amount) AS amount FROM central_booking_items WHERE booking_id = ? GROUP BY seat_id ORDER BY zone ASC, seat_id ASC',
     [bookingId]
   );
   const groups = new Map<string, { zone: string; seats: string[]; amount: number }>();
   for (const item of items) {
     const zone = String(item.zone);
     const group = groups.get(zone) ?? { zone, seats: [], amount: 0 };
-    group.seats.push(String(item.seatId));
+    if (!group.seats.includes(String(item.seatId))) group.seats.push(String(item.seatId));
     group.amount += Number(item.amount ?? 0);
     groups.set(zone, group);
   }

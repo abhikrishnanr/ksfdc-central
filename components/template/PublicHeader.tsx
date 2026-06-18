@@ -4,6 +4,23 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { KeyboardEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Bell,
+  Building2,
+  CalendarDays,
+  Clapperboard,
+  Home,
+  Languages,
+  LogIn,
+  LogOut,
+  MapPin,
+  Menu,
+  Search,
+  ShieldCheck,
+  Ticket,
+  UserRound,
+  X
+} from 'lucide-react';
 import { getOfficialNavigation, getPublicNavigation } from '../../lib/navigation';
 
 type AuthState = { authenticated?: boolean; user?: { email?: string } };
@@ -12,8 +29,18 @@ type Suggestion = { id: string; type: 'Movie' | 'Theatre'; label: string; detail
 const CITIES = ['Kerala', 'Thiruvananthapuram', 'Kochi'];
 
 function initials(email?: string) {
-  if (!email) return 'U';
-  return email.slice(0, 2).toUpperCase();
+  return email ? email.slice(0, 2).toUpperCase() : 'U';
+}
+
+function NavigationIcon({ href }: { href: string }) {
+  const props = { size: 19, strokeWidth: 2 };
+  if (href === '/') return <Home {...props} />;
+  if (href.startsWith('/movies')) return <Clapperboard {...props} />;
+  if (href.startsWith('/shows')) return <CalendarDays {...props} />;
+  if (href.startsWith('/theatres')) return <Building2 {...props} />;
+  if (href.startsWith('/profile/tickets')) return <Ticket {...props} />;
+  if (href.startsWith('/profile')) return <UserRound {...props} />;
+  return <LogIn {...props} />;
 }
 
 export default function PublicHeader() {
@@ -38,7 +65,6 @@ export default function PublicHeader() {
 
   useEffect(() => {
     if (official || query.trim().length < 2) {
-      setSuggestions([]);
       return;
     }
     const controller = new AbortController();
@@ -65,9 +91,29 @@ export default function PublicHeader() {
     return () => window.removeEventListener('pointerdown', onPointerDown);
   }, []);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    function onKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === 'Escape') setMobileOpen(false);
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setMobileOpen(false));
+    return () => window.cancelAnimationFrame(frame);
+  }, [pathname]);
+
   async function publicLogout() {
     await fetch('/api/public/auth/logout', { method: 'POST' }).catch(() => undefined);
     setAuth({});
+    setMobileOpen(false);
     router.refresh();
   }
 
@@ -80,7 +126,6 @@ export default function PublicHeader() {
   const nav = official ? getOfficialNavigation(officialAuthenticated) : getPublicNavigation(Boolean(auth.authenticated));
   const publicHref = (href: string) => city === 'Kerala' ? href : `${href}${href.includes('?') ? '&' : '?'}city=${encodeURIComponent(city)}`;
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href);
-
   const cityOptions = useMemo(() => CITIES, []);
 
   function updateCity(nextCity: string) {
@@ -94,6 +139,7 @@ export default function PublicHeader() {
     setQuery('');
     setSuggestions([]);
     setSearchOpen(false);
+    setMobileOpen(false);
     router.push(suggestion.href);
   }
 
@@ -113,80 +159,69 @@ export default function PublicHeader() {
     }
   }
 
+  const suggestionList = suggestions.length ? (
+    <div className="search-suggestions">
+      {suggestions.map((suggestion, index) => (
+        <button
+          type="button"
+          className={index === activeIndex ? 'active' : ''}
+          key={`${suggestion.type}-${suggestion.id}`}
+          onMouseEnter={() => setActiveIndex(index)}
+          onClick={() => chooseSuggestion(suggestion)}
+        >
+          <span>{suggestion.label}</span>
+          <small>{suggestion.type} - {suggestion.detail}</small>
+        </button>
+      ))}
+    </div>
+  ) : null;
+
   if (!official) {
     return (
       <header className="public-topbar">
         <Link className="brand-lockup public-brand" href="/">
           <span className="brand-mark">KT</span>
           <span>
-            <span className="brand-title">KSFDC Tickets</span>
-            <br />
+            <span className="brand-title">KSFDC Tickets</span><br />
             <span className="brand-subtitle">Kerala State Film Development Corporation</span>
           </span>
         </Link>
 
-        <div className={`public-header-controls ${mobileOpen ? 'open' : ''}`}>
+        <div className="public-header-controls">
           <label className="city-select">
-           
-            <select value={city} onChange={(event) => updateCity(event.target.value)}>
+            <select value={city} onChange={(event) => updateCity(event.target.value)} aria-label="City">
               {cityOptions.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
           </label>
-
           <div className={`public-search ${searchOpen ? 'open' : ''}`} ref={searchRef}>
             <input
               value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setSearchOpen(true);
-              }}
+              onChange={(event) => { const value = event.target.value; setQuery(value); if (value.trim().length < 2) setSuggestions([]); setSearchOpen(true); }}
               onFocus={() => setSearchOpen(true)}
               onKeyDown={handleSearchKey}
               placeholder="Search movies or theatres"
               aria-label="Search movies or theatres"
             />
-            {searchOpen && suggestions.length ? (
-              <div className="search-suggestions">
-                {suggestions.map((suggestion, index) => (
-                  <button
-                    type="button"
-                    className={index === activeIndex ? 'active' : ''}
-                    key={`${suggestion.type}-${suggestion.id}`}
-                    onMouseEnter={() => setActiveIndex(index)}
-                    onClick={() => chooseSuggestion(suggestion)}
-                  >
-                    <span>{suggestion.label}</span>
-                    <small>{suggestion.type} - {suggestion.detail}</small>
-                  </button>
-                ))}
-              </div>
-            ) : null}
+            {searchOpen ? suggestionList : null}
           </div>
-
           <nav className="public-nav" aria-label="Public navigation">
             {nav.map((item) => item.label === 'Sign in'
               ? <Link className="login-signup-button" key={item.href} href={item.href}>Login / Sign Up</Link>
               : <Link className={isActive(item.href) ? 'active' : ''} key={`${item.label}-${item.href}`} href={publicHref(item.href)}>{item.label}</Link>)}
-            <button className="header-icon-button" type="button" aria-label="Notifications">!</button>
+            <button className="header-icon-button" type="button" aria-label="Notifications"><Bell size={18} /></button>
             <label className="language-select" aria-label="Language">
-              <select defaultValue="EN">
-                <option value="EN">EN</option>
-                <option value="ML">ML</option>
-              </select>
+              <select defaultValue="EN"><option value="EN">EN</option><option value="ML">ML</option></select>
             </label>
             <Link className="theatre-login-link" href="/official/login">Theatre Login</Link>
           </nav>
-
           {auth.authenticated ? (
             <div className="account-menu">
               <button type="button" className="avatar-button" onClick={() => setAccountOpen((value) => !value)}>
-                <span>{initials(auth.user?.email)}</span>
-                <small>{auth.user?.email}</small>
+                <span>{initials(auth.user?.email)}</span><small>{auth.user?.email}</small>
               </button>
               {accountOpen ? (
                 <div className="account-dropdown">
-                  <Link href="/profile">Profile</Link>
-                  <Link href="/profile/tickets">My tickets</Link>
+                  <Link href="/profile">Profile</Link><Link href="/profile/tickets">My tickets</Link>
                   <button type="button" onClick={publicLogout}>Logout</button>
                 </div>
               ) : null}
@@ -194,31 +229,63 @@ export default function PublicHeader() {
           ) : null}
         </div>
 
-        <button className="mobile-menu-button" type="button" onClick={() => setMobileOpen((value) => !value)} aria-label="Toggle menu">
-          <span />
-          <span />
-          <span />
+        <button className="mobile-menu-button" type="button" onClick={() => setMobileOpen(true)} aria-label="Open menu" aria-expanded={mobileOpen}>
+          <Menu size={24} />
         </button>
+
+        <button className={`mobile-drawer-backdrop ${mobileOpen ? 'open' : ''}`} type="button" aria-label="Close menu" onClick={() => setMobileOpen(false)} />
+        <aside className={`mobile-nav-drawer ${mobileOpen ? 'open' : ''}`} aria-hidden={!mobileOpen}>
+          <div className="mobile-drawer-header">
+            <Link className="brand-lockup" href="/" onClick={() => setMobileOpen(false)}>
+              <span className="brand-mark">KT</span>
+              <span><span className="brand-title">KSFDC Tickets</span><br /><span className="brand-subtitle">Book cinema across Kerala</span></span>
+            </Link>
+            <button type="button" className="drawer-close-button" onClick={() => setMobileOpen(false)} aria-label="Close menu"><X size={25} /></button>
+          </div>
+
+          <div className="mobile-drawer-tools">
+            <label className="drawer-search">
+              <Search size={19} />
+              <input value={query} onChange={(event) => { const value = event.target.value; setQuery(value); if (value.trim().length < 2) setSuggestions([]); setSearchOpen(true); }} onKeyDown={handleSearchKey} placeholder="Search movies or theatres" />
+            </label>
+            {searchOpen ? suggestionList : null}
+            <label className="drawer-select"><MapPin size={19} /><select value={city} onChange={(event) => updateCity(event.target.value)}>{cityOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          </div>
+
+          <nav className="mobile-drawer-nav" aria-label="Mobile navigation">
+            {nav.map((item, index) => (
+              <Link
+                className={`${isActive(item.href) ? 'active' : ''} drawer-color-${index % 5}`}
+                key={`${item.label}-${item.href}`}
+                href={publicHref(item.href)}
+                onClick={() => setMobileOpen(false)}
+              >
+                <span className="drawer-nav-icon"><NavigationIcon href={item.href} /></span>
+                <span><strong>{item.label === 'Sign in' ? 'Login / Sign Up' : item.label}</strong><small>{item.href.startsWith('/profile/tickets') ? 'View bookings and tickets' : item.href.startsWith('/theatres') ? 'Explore theatre network' : item.href.startsWith('/shows') ? 'Find showtimes near you' : item.href.startsWith('/movies') ? 'Browse now showing' : item.href === '/' ? 'Discover cinema' : 'Account and preferences'}</small></span>
+              </Link>
+            ))}
+          </nav>
+
+          <div className="mobile-drawer-footer">
+            <Link href="/official/login" onClick={() => setMobileOpen(false)}><ShieldCheck size={19} /> Theatre Login</Link>
+            <span><Languages size={18} /><select defaultValue="EN"><option value="EN">English</option><option value="ML">Malayalam</option></select></span>
+            {auth.authenticated ? <button type="button" onClick={publicLogout}><LogOut size={18} /> Logout</button> : null}
+          </div>
+        </aside>
       </header>
     );
   }
 
   return (
     <header className="topbar">
-      <Link className="brand-lockup" href={official ? '/admin' : '/'}>
-        <span className="brand-mark">{official ? 'KO' : 'KC'}</span>
-        <span>
-          <span className="brand-title">{official ? 'KSFDC Operations' : 'KSFDC Tickets'}</span>
-          <br />
-          <span className="brand-subtitle">{official ? 'Theatre official portal' : 'Movies across Kerala'}</span>
-        </span>
+      <Link className="brand-lockup" href="/admin">
+        <span className="brand-mark">KO</span>
+        <span><span className="brand-title">KSFDC Operations</span><br /><span className="brand-subtitle">Theatre official portal</span></span>
       </Link>
-      <nav className="topnav" aria-label={official ? 'Theatre official navigation' : 'Public navigation'}>
+      <nav className="topnav" aria-label="Theatre official navigation">
         {nav.map((item) => item.href === '/admin/logout'
           ? <button className="nav-pill" key={item.href} type="button" onClick={officialLogout}>{item.label}</button>
           : <Link className="nav-pill" key={item.href} href={item.href}>{item.label}</Link>)}
-        {!official ? <Link className="nav-pill" href="/official/login">Theatre Login</Link> : null}
-        {!official && auth.authenticated ? <button className="nav-pill" type="button" onClick={publicLogout}>Logout</button> : null}
       </nav>
     </header>
   );

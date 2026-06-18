@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { Suspense } from 'react';
 import PublicHeader from '../components/template/PublicHeader';
 import PublicFooter from '../components/template/PublicFooter';
-import MobileBottomNav from '../components/template/MobileBottomNav';
 import './globals.css';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -16,7 +15,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <main className="page-frame">{children}</main>
           <Suspense fallback={null}>
             <PublicFooter />
-            <MobileBottomNav />
           </Suspense>
         </div>
       </body>

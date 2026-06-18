@@ -53,7 +53,11 @@ async function importBookingCreated(connection: PoolConnection, event: Required<
   const showId = payload?.showId ?? event.showId ?? null;
   if (!showId) throw new Error('INVALID_EVENT:showId is required');
 
-  const seats = Array.isArray(payload?.seats) ? payload.seats.filter((seat) => seat.seatId) : [];
+  const seats = Array.from(new Map(
+    (Array.isArray(payload?.seats) ? payload.seats : [])
+      .filter((seat) => seat.seatId)
+      .map((seat) => [String(seat.seatId), seat])
+  ).values());
   if (!seats.length) throw new Error('INVALID_EVENT:at least one seat is required');
 
   const bookingId = payload?.localBookingId ?? payload?.bookingId ?? `LOCAL_MIRROR_${randomUUID()}`;

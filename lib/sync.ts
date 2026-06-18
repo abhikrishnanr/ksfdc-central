@@ -4,6 +4,7 @@ import { getCentralDbPool } from './db';
 let centralHeartbeatTablesInitPromise: Promise<void> | null = null;
 let centralMirrorEventsTableInitPromise: Promise<void> | null = null;
 let centralSyncInboxInitPromise: Promise<void> | null = null;
+let centralSeatItemKeysInitPromise: Promise<void> | null = null;
 
 async function addColumnIfMissing(tableName: string, columnName: string, definition: string) {
   const pool = getCentralDbPool();
@@ -42,6 +43,74 @@ async function dropIndexIfExists(tableName: string, indexName: string) {
   if (Number(row.cnt) > 0) {
     await pool.query(`ALTER TABLE ${tableName} DROP INDEX ${indexName}`);
   }
+}
+
+async function repairCentralSeatItemKey(input: {
+  tableName: 'central_seat_hold_items' | 'central_booking_items';
+  ownerColumn: 'hold_id' | 'booking_id';
+  rowIdColumn: 'hold_item_row_id' | 'booking_item_row_id';
+  indexName: string;
+}) {
+  const pool = getCentralDbPool();
+  const [[uniqueKey]] = await pool.query<RowDataPacket[]>(
+    `SELECT COUNT(*) AS cnt
+     FROM (
+       SELECT INDEX_NAME
+       FROM INFORMATION_SCHEMA.STATISTICS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = ?
+         AND NON_UNIQUE = 0
+         AND COLUMN_NAME IN (?, 'seat_id')
+       GROUP BY INDEX_NAME
+       HAVING COUNT(DISTINCT COLUMN_NAME) = 2
+     ) item_keys`,
+    [input.tableName, input.ownerColumn]
+  );
+  if (Number(uniqueKey.cnt) > 0) return;
+
+  await addColumnIfMissing(
+    input.tableName,
+    input.rowIdColumn,
+    'BIGINT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE FIRST',
+  );
+  await pool.query(
+    `DELETE older
+     FROM ${input.tableName} older
+     INNER JOIN ${input.tableName} newer
+       ON newer.${input.ownerColumn} = older.${input.ownerColumn}
+      AND newer.seat_id = older.seat_id
+      AND newer.${input.rowIdColumn} > older.${input.rowIdColumn}`,
+  );
+  await addIndexIfMissing(
+    input.tableName,
+    input.indexName,
+    `UNIQUE KEY ${input.indexName} (${input.ownerColumn}, seat_id)`,
+  );
+}
+
+async function initializeCentralSeatItemKeys() {
+  await repairCentralSeatItemKey({
+    tableName: 'central_seat_hold_items',
+    ownerColumn: 'hold_id',
+    rowIdColumn: 'hold_item_row_id',
+    indexName: 'uq_central_hold_item_seat'
+  });
+  await repairCentralSeatItemKey({
+    tableName: 'central_booking_items',
+    ownerColumn: 'booking_id',
+    rowIdColumn: 'booking_item_row_id',
+    indexName: 'uq_central_booking_item_seat'
+  });
+}
+
+export function ensureCentralSeatItemKeys() {
+  if (!centralSeatItemKeysInitPromise) {
+    centralSeatItemKeysInitPromise = initializeCentralSeatItemKeys().catch((error: unknown) => {
+      centralSeatItemKeysInitPromise = null;
+      throw error;
+    });
+  }
+  return centralSeatItemKeysInitPromise;
 }
 
 async function ensureHeartbeatTheatreKey() {
@@ -201,6 +270,7 @@ export function ensureCentralSyncInbox() {
 }
 
 async function initializeCentralSyncInbox() {
+  await ensureCentralSeatItemKeys();
   await getCentralDbPool().query(`
     CREATE TABLE IF NOT EXISTS central_sync_inbox (
       id BIGINT AUTO_INCREMENT PRIMARY KEY,

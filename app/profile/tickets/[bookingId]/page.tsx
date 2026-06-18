@@ -8,6 +8,7 @@ import { PageHeader } from '../../../../components/premium-ui';
 import ShareableTicketCard, { type ShareableTicketSeatGroup } from '../../../../components/template/ShareableTicketCard';
 import { getCentralDbPool } from '../../../../lib/db';
 import { getPublicSession } from '../../../../lib/public-auth';
+import { ensureCentralSyncInbox } from '../../../../lib/sync';
 
 function formatTime(value: unknown) {
   return value ? new Date(value as string | Date).toLocaleString('en-IN') : 'Not recorded';
@@ -22,7 +23,7 @@ function groupItems(items: RowDataPacket[]) {
   for (const item of items) {
     const zone = String(item.zone);
     const group = groups.get(zone) ?? { zone, seats: [], amount: 0 };
-    group.seats.push(String(item.seatId));
+    if (!group.seats.includes(String(item.seatId))) group.seats.push(String(item.seatId));
     group.amount += Number(item.amount ?? 0);
     groups.set(zone, group);
   }
@@ -33,6 +34,7 @@ export default async function ProfileTicketDetailPage({ params }: { params: Prom
   const session = await getPublicSession();
   if (!session) redirect('/profile');
   const { bookingId } = await params;
+  await ensureCentralSyncInbox();
 
   const [[booking]] = await getCentralDbPool().query<RowDataPacket[]>(
     `SELECT b.id, b.show_id AS showId, s.theatre_id AS theatreId, b.status, b.total_amount AS totalAmount, b.created_at AS bookedAt,
@@ -51,7 +53,7 @@ export default async function ProfileTicketDetailPage({ params }: { params: Prom
   if (!booking) notFound();
 
   const [items] = await getCentralDbPool().query<RowDataPacket[]>(
-    'SELECT seat_id AS seatId, zone, amount FROM central_booking_items WHERE booking_id = ? ORDER BY zone, seat_id',
+    'SELECT seat_id AS seatId, MAX(zone) AS zone, MAX(amount) AS amount FROM central_booking_items WHERE booking_id = ? GROUP BY seat_id ORDER BY zone, seat_id',
     [bookingId]
   );
   const groups = groupItems(items);

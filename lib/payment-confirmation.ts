@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { RowDataPacket } from 'mysql2';
 import { getCentralDbPool } from './db';
 import { normalizeAuthorityMode } from './authority-mode';
-import { ensureCentralMirrorEventsTable, getNextCentralMirrorSequence } from './sync';
+import { ensureCentralMirrorEventsTable, ensureCentralSeatItemKeys, getNextCentralMirrorSequence } from './sync';
 import { LocalTheatreApiError, confirmLocalHold } from './local-theatre-client';
 import { authorityUnavailablePayload, getBookingAuthorityDecision, PUBLIC_LOCAL_UNAVAILABLE_MESSAGE } from './booking-authority';
 
@@ -40,6 +40,7 @@ function returningToCentralResult() {
 }
 
 export async function confirmCentralHoldAfterPayment(input: PaymentConfirmationInput) {
+  await ensureCentralSeatItemKeys();
   await ensureCentralMirrorEventsTable();
   const connection = await getCentralDbPool().getConnection();
   try {
@@ -183,6 +184,7 @@ export async function confirmCentralHoldAfterPayment(input: PaymentConfirmationI
 }
 
 export async function confirmForwardedLocalHoldAfterPayment(input: PaymentConfirmationInput) {
+  await ensureCentralSeatItemKeys();
   await ensureCentralMirrorEventsTable();
 
   const [[payment]] = await getCentralDbPool().query<RowDataPacket[]>('SELECT booking_id AS bookingId FROM payments WHERE id = ? LIMIT 1', [input.paymentRowId]);
