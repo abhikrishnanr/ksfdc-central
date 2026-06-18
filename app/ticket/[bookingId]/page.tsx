@@ -1,16 +1,12 @@
 import { RowDataPacket } from 'mysql2';
-import { createHash } from 'crypto';
 import { notFound } from 'next/navigation';
 import { getCentralDbPool } from '../../../lib/db';
 import { ensureCentralPaymentTables } from '../../../lib/razorpay';
 import { ensureCentralSyncInbox } from '../../../lib/sync';
 import ShareableTicketCard, { type ShareableTicketSeatGroup } from '../../../components/template/ShareableTicketCard';
+import { createTicketVerificationToken } from '../../../lib/ticket-verification';
 
 export const dynamic = 'force-dynamic';
-
-function ticketToken(bookingId: string, showId: string) {
-  return createHash('sha256').update(`${bookingId}:${showId}:${process.env.TICKET_VERIFY_SECRET ?? 'dev-ticket-verify-secret'}`).digest('hex').slice(0, 24);
-}
 
 export default async function CentralTicketPage({ params }: { params: Promise<{ bookingId: string }> }) {
   const { bookingId } = await params;
@@ -47,7 +43,7 @@ export default async function CentralTicketPage({ params }: { params: Promise<{ 
     groups.set(zone, group);
   }
   const showId = String(booking.showId);
-  const token = ticketToken(String(booking.id), showId);
+  const token = createTicketVerificationToken(String(booking.id), showId);
   const baseUrl = process.env.NEXT_PUBLIC_CENTRAL_APP_URL?.replace(/\/$/, '') ?? '';
   const verificationUrl = `${baseUrl}/ticket/${String(booking.id)}?verify=${token}`;
   const ticket = {

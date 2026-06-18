@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 
 export default function PublicFooter() {
   const pathname = usePathname();
-  if (pathname.startsWith('/admin') || pathname.startsWith('/official')) return null;
+  if (pathname.startsWith('/admin') || pathname.startsWith('/official') || pathname.startsWith('/ticket-checker')) return null;
 
   return (
     <footer className="public-footer">

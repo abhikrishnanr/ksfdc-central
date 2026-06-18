@@ -128,6 +128,8 @@ export default function PublicHeader() {
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href);
   const cityOptions = useMemo(() => CITIES, []);
 
+  if (pathname.startsWith('/ticket-checker')) return null;
+
   function updateCity(nextCity: string) {
     const params = new URLSearchParams(searchParams.toString());
     if (nextCity === 'Kerala') params.delete('city');

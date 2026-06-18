@@ -3023,6 +3023,272 @@ p { color: var(--muted); line-height: 1.6; }
   }
 }
 
+.checker-login-page,
+.ticket-checker-page {
+  width: min(100%, 1500px);
+  margin-inline: auto;
+  color: #f8fafc;
+}
+
+.checker-login-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
+  min-height: calc(100dvh - 3rem);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: #0b111a;
+}
+
+.checker-login-intro {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  min-height: 620px;
+  padding: clamp(2rem, 7vw, 6rem);
+  background: linear-gradient(115deg, #030a12, #0a1d2b);
+}
+
+.checker-login-intro h1 { max-width: 720px; margin: 0.35rem 0; font-size: clamp(3rem, 7vw, 6.4rem); line-height: 0.95; }
+.checker-login-intro > p:not(.eyebrow) { max-width: 600px; font-size: 1.05rem; }
+.checker-brand-icon { display: grid; place-items: center; width: 64px; height: 64px; margin-bottom: 2rem; border-radius: 8px; color: #061018; background: #f5b82e; }
+.checker-security-note { display: flex; align-items: center; gap: 0.55rem; margin-top: 2rem; color: #86efac; font-weight: 750; }
+
+.checker-login-form {
+  display: grid;
+  align-content: center;
+  gap: 1.15rem;
+  padding: clamp(2rem, 5vw, 4.5rem);
+  background: #111923;
+}
+.checker-login-form h2 { margin: 0.2rem 0 0; font-size: 2rem; }
+.checker-login-form label,
+.checker-selector-grid label { display: grid; gap: 0.5rem; color: #dbe4ee; font-size: 0.82rem; font-weight: 800; }
+.checker-login-form input,
+.checker-selector-grid select,
+.checker-selector-grid input,
+.checker-manual-entry input {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  padding: 0 0.85rem;
+  color: #f8fafc;
+  background: #0b121b;
+}
+.checker-login-form small { color: #7f8c9c; }
+
+.checker-primary-button,
+.checker-start-button,
+.checker-camera-button,
+.checker-next-button,
+.checker-layout-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 48px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0.75rem 1.1rem;
+  color: #07111b;
+  background: #f5b82e;
+  font-weight: 900;
+  cursor: pointer;
+}
+.checker-primary-button:disabled,
+.checker-start-button:disabled { opacity: 0.45; cursor: not-allowed; }
+.checker-inline-error,
+.checker-inline-success { border-left: 4px solid #fb7185; padding: 0.8rem 1rem; color: #fecdd3; background: rgba(190,24,93,0.12); }
+.checker-inline-success { border-color: #34d399; color: #a7f3d0; background: rgba(5,150,105,0.12); }
+
+.ticket-checker-page { min-height: calc(100dvh - 2rem); }
+.checker-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding: 0.85rem 1rem;
+  background: #09111b;
+}
+.checker-title,
+.checker-title > span,
+.checker-topbar nav,
+.checker-topbar nav a,
+.checker-topbar nav button { display: flex; align-items: center; }
+.checker-title { gap: 0.7rem; }
+.checker-title > span { justify-content: center; width: 43px; height: 43px; border-radius: 7px; color: #061018; background: #f5b82e; }
+.checker-title div { display: grid; gap: 0.1rem; }
+.checker-title strong { font-size: 1rem; }
+.checker-title small { color: #8fa0b2; }
+.checker-topbar nav { gap: 0.5rem; }
+.checker-topbar nav a,
+.checker-topbar nav button,
+.checker-show-strip button {
+  gap: 0.45rem;
+  min-height: 40px;
+  border: 1px solid rgba(255,255,255,0.13);
+  border-radius: 6px;
+  padding: 0.55rem 0.75rem;
+  color: #dbe4ee;
+  background: #121b26;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.checker-setup-panel { display: grid; gap: 2rem; padding: clamp(1.25rem, 4vw, 3.5rem); background: #0c131d; }
+.checker-setup-heading { display: flex; align-items: center; gap: 1.2rem; }
+.checker-setup-heading h1,
+.checker-show-strip h1,
+.attendance-controls h1 { margin: 0.15rem 0; font-size: clamp(2rem, 4vw, 3.5rem); }
+.checker-step-number { display: grid; place-items: center; width: 56px; height: 56px; flex: 0 0 56px; border: 2px solid #f5b82e; border-radius: 50%; color: #f5b82e; font-size: 1.4rem; font-weight: 950; }
+.checker-selector-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+.checker-input-icon { position: relative; display: flex; align-items: center; }
+.checker-input-icon svg { position: absolute; left: 0.8rem; z-index: 1; color: #f5b82e; }
+.checker-input-icon input { padding-left: 2.7rem; }
+.checker-start-button { min-height: 62px; font-size: 1.05rem; }
+
+.checker-show-strip { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; background: #111b27; }
+.checker-show-strip p { margin: 0; }
+.checker-live-grid { display: grid; grid-template-columns: minmax(340px, 0.78fr) minmax(0, 1.22fr); min-height: 720px; }
+.checker-scanner-panel,
+.checker-result-panel { padding: clamp(1rem, 3vw, 2rem); }
+.checker-scanner-panel { border-right: 1px solid rgba(255,255,255,0.1); background: #0c141f; }
+.checker-result-panel { display: grid; background: #070d14; }
+.checker-panel-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.checker-panel-heading h2 { margin: 0.15rem 0 0; }
+.checker-camera {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 360px;
+  overflow: hidden;
+  border: 2px solid rgba(245,184,46,0.42);
+  border-radius: 8px;
+  background: #03070b;
+}
+.checker-camera > div { display: grid; justify-items: center; gap: 0.65rem; color: #708094; text-align: center; }
+.checker-camera video { width: 100% !important; min-height: 360px; object-fit: cover; }
+.checker-camera-button { width: 100%; margin-top: 0.75rem; color: #f8fafc; background: #1b2938; }
+.checker-manual-entry { display: grid; gap: 0.55rem; margin-top: 1.25rem; }
+.checker-manual-entry > span { color: #8392a5; font-size: 0.78rem; text-align: center; }
+.checker-manual-entry > div { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
+.checker-manual-entry button { border: 0; border-radius: 6px; padding-inline: 1rem; color: #07111b; background: #f5b82e; font-weight: 900; }
+
+.checker-result-empty { align-self: center; display: grid; justify-items: center; gap: 0.6rem; padding: 3rem 1rem; color: #718197; text-align: center; }
+.checker-result-empty h2 { margin: 0; color: #cbd5e1; }
+.checker-result-empty.is-loading svg { color: #f5b82e; animation: checker-scan-pulse 1s ease-in-out infinite; }
+@keyframes checker-scan-pulse { 50% { transform: scale(1.08); opacity: 0.55; } }
+.checker-result-card { align-self: center; display: grid; justify-items: center; gap: 0.85rem; width: min(100%, 760px); margin-inline: auto; padding: clamp(1.25rem, 4vw, 3rem); border: 2px solid #34d399; border-radius: 8px; text-align: center; background: rgba(6,78,59,0.16); }
+.checker-result-card.is-invalid { border-color: #fb7185; background: rgba(136,19,55,0.16); }
+.checker-result-card.is-already_admitted { border-color: #fbbf24; background: rgba(146,64,14,0.16); }
+.checker-result-icon { display: grid; place-items: center; width: 82px; height: 82px; border-radius: 50%; color: #052e25; background: #34d399; }
+.checker-result-icon svg { width: 48px; height: 48px; stroke-width: 3; }
+.is-invalid .checker-result-icon { color: #4c0519; background: #fb7185; }
+.is-already_admitted .checker-result-icon { color: #451a03; background: #fbbf24; }
+.checker-result-card h2 { margin: 0; font-size: clamp(2.4rem, 6vw, 5.5rem); line-height: 0.95; }
+.checker-result-message { margin: 0; font-size: 1.05rem; }
+.checker-ticket-context { display: grid; gap: 0.22rem; width: 100%; border-block: 1px solid rgba(255,255,255,0.12); padding: 1rem; }
+.checker-ticket-context strong { font-size: 1.35rem; }
+.checker-ticket-context small { color: #8291a3; overflow-wrap: anywhere; }
+.checker-seat-callout { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.65rem; width: 100%; }
+.checker-seat-callout div { display: grid; gap: 0.15rem; border: 1px solid rgba(52,211,153,0.4); border-radius: 6px; padding: 1rem; background: rgba(5,150,105,0.11); }
+.checker-seat-callout span { color: #86efac; font-size: 0.8rem; font-weight: 900; }
+.checker-seat-callout strong { font-size: clamp(2rem, 5vw, 4rem); line-height: 1; overflow-wrap: anywhere; }
+.checker-layout-button { width: 100%; color: #f8fafc; background: #172433; }
+.checker-next-button { width: 100%; }
+
+.checker-modal-backdrop { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 1rem; background: rgba(2,6,12,0.88); }
+.checker-seat-modal { position: relative; display: grid; grid-template-rows: auto 1fr; width: min(1200px, 100%); height: min(900px, 94dvh); overflow: hidden; border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; background: #080e16; box-shadow: 0 32px 80px rgba(0,0,0,0.55); }
+.checker-seat-modal > header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.checker-seat-modal h2,
+.checker-seat-modal p { margin: 0.1rem 0; }
+.checker-icon-button { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; background: #182332; cursor: pointer; }
+.checker-seat-tools { position: absolute; top: 90px; right: 1rem; z-index: 4; display: flex; gap: 0.35rem; }
+.checker-seat-tools button { min-height: 38px; border: 1px solid rgba(245,184,46,0.35); border-radius: 6px; padding: 0.45rem 0.7rem; color: #fff; background: #101a26; }
+.checker-seat-transform { width: 100% !important; height: 100% !important; }
+.checker-seat-transform-content { width: max-content !important; height: max-content !important; }
+.checker-hall-layout { display: grid; gap: 7px; width: max-content; min-width: 900px; padding: 90px 55px 50px; background: #080d14; }
+.checker-hall-row { display: flex; align-items: center; gap: 5px; width: max-content; }
+.checker-hall-row > strong { width: 42px; color: #a6b2c1; text-align: center; }
+.checker-hall-row span { display: grid; place-items: center; width: 34px; height: 29px; border: 1px solid #2f8f55; border-radius: 4px; color: #a7f3d0; font-size: 0.7rem; }
+.checker-hall-row span.is-sold { border-color: #455264; color: #64748b; background: #202a36; }
+.checker-hall-row span.is-ticket-seat { border-color: #f5b82e; color: #101820; background: #f5b82e; box-shadow: 0 0 0 3px rgba(245,184,46,0.18); font-weight: 950; }
+.checker-hall-row i { display: block; height: 1px; }
+.checker-screen-line { width: 72%; margin: 36px auto 0; border-top: 5px solid #c9ebff; padding-top: 1rem; color: #90a8ba; text-align: center; }
+
+.attendance-controls { display: grid; gap: 1.25rem; padding: 1.5rem; background: #0d151f; }
+.attendance-controls .checker-selector-grid { grid-template-columns: 1fr 0.8fr 1.4fr auto; align-items: end; }
+.attendance-summary { display: grid; grid-template-columns: 1.5fr 0.7fr 0.7fr auto; gap: 1px; margin-top: 1px; background: rgba(255,255,255,0.1); }
+.attendance-summary > div { display: grid; gap: 0.3rem; padding: 1rem; background: #101a25; }
+.attendance-summary span { color: #8796a9; font-size: 0.76rem; font-weight: 800; }
+.attendance-summary strong { font-size: 1.25rem; }
+.attendance-summary button { display: flex; align-items: center; justify-content: center; gap: 0.5rem; border: 0; padding: 1rem; color: #061018; background: #f5b82e; font-weight: 900; }
+.attendance-table-wrap { overflow-x: auto; background: #0a111a; }
+.attendance-table { width: 100%; border-collapse: collapse; }
+.attendance-table th,
+.attendance-table td { border-bottom: 1px solid rgba(255,255,255,0.08); padding: 0.9rem 1rem; text-align: left; vertical-align: top; }
+.attendance-table th { color: #93a2b4; background: #111b27; font-size: 0.75rem; text-transform: uppercase; }
+.attendance-seat-group { display: inline-flex; gap: 0.35rem; margin: 0 0.35rem 0.3rem 0; border: 1px solid rgba(52,211,153,0.3); border-radius: 5px; padding: 0.3rem 0.5rem; }
+.attendance-seat-group b { color: #6ee7b7; }
+.attendance-empty { padding: 3rem !important; color: #7f8da0; text-align: center !important; }
+.attendance-empty-state { min-height: 430px; background: #0a111a; }
+
+body:has(.ticket-checker-page),
+body:has(.checker-login-page) { background: #050a10; }
+body:has(.ticket-checker-page) .page-frame,
+body:has(.checker-login-page) .page-frame { width: 100%; max-width: none; padding: 1rem; }
+
+@media (max-width: 900px) {
+  .checker-login-page { grid-template-columns: 1fr; }
+  .checker-login-intro { min-height: 280px; padding: 2rem; }
+  .checker-login-intro h1 { font-size: 3rem; }
+  .checker-selector-grid,
+  .attendance-controls .checker-selector-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .checker-live-grid { grid-template-columns: 1fr; }
+  .checker-scanner-panel { border-right: 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .checker-result-panel { min-height: 520px; }
+  .attendance-summary { grid-template-columns: repeat(3, 1fr); }
+  .attendance-summary button { grid-column: 1 / -1; }
+}
+
+@media (max-width: 600px) {
+  body:has(.ticket-checker-page) .page-frame,
+  body:has(.checker-login-page) .page-frame { padding: 0; }
+  .checker-login-page { min-height: 100dvh; border: 0; border-radius: 0; }
+  .checker-login-intro { min-height: 230px; }
+  .checker-brand-icon { width: 50px; height: 50px; margin-bottom: 0.8rem; }
+  .checker-security-note { margin-top: 0.8rem; }
+  .checker-login-form { padding: 1.5rem; }
+  .checker-topbar { position: sticky; top: 0; z-index: 30; }
+  .checker-title small { display: none; }
+  .checker-topbar nav a,
+  .checker-topbar nav button { width: 42px; justify-content: center; overflow: hidden; padding: 0; font-size: 0; }
+  .checker-setup-panel { padding: 1.1rem; }
+  .checker-setup-heading { align-items: flex-start; }
+  .checker-step-number { width: 42px; height: 42px; flex-basis: 42px; }
+  .checker-selector-grid,
+  .attendance-controls .checker-selector-grid { grid-template-columns: 1fr; }
+  .checker-show-strip { align-items: flex-start; }
+  .checker-show-strip h1 { font-size: 1.55rem; }
+  .checker-show-strip button { flex: 0 0 auto; }
+  .checker-scanner-panel,
+  .checker-result-panel { padding: 1rem; }
+  .checker-camera,
+  .checker-camera video { min-height: 300px; }
+  .checker-result-panel { min-height: 480px; }
+  .checker-result-card { padding: 1.2rem; }
+  .checker-result-card h2 { font-size: 2.5rem; }
+  .checker-seat-callout { grid-template-columns: 1fr; }
+  .checker-seat-callout strong { font-size: 2.6rem; }
+  .checker-modal-backdrop { padding: 0; }
+  .checker-seat-modal { width: 100%; height: 100dvh; border: 0; border-radius: 0; }
+  .attendance-summary { grid-template-columns: 1fr 1fr; }
+  .attendance-summary > div:first-child { grid-column: 1 / -1; }
+}
+
 @media print {
   body {
     background: #fff !important;

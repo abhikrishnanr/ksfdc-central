@@ -399,3 +399,52 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   metadata JSON NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS ticket_checker_users (
+  id VARCHAR(80) PRIMARY KEY,
+  username VARCHAR(80) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  display_name VARCHAR(120) NOT NULL,
+  theatre_id VARCHAR(80) NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_ticket_checker_theatre (theatre_id, is_active)
+);
+
+CREATE TABLE IF NOT EXISTS ticket_checker_sessions (
+  id VARCHAR(100) PRIMARY KEY,
+  user_id VARCHAR(80) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  revoked_at TIMESTAMP NULL,
+  INDEX idx_ticket_checker_sessions_user (user_id, expires_at),
+  CONSTRAINT fk_ticket_checker_session_user FOREIGN KEY (user_id) REFERENCES ticket_checker_users(id)
+);
+
+CREATE TABLE IF NOT EXISTS ticket_attendance (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  booking_id VARCHAR(100) NOT NULL,
+  show_id VARCHAR(100) NOT NULL,
+  theatre_id VARCHAR(100) NOT NULL,
+  checker_user_id VARCHAR(80) NOT NULL,
+  admission_source VARCHAR(30) NOT NULL DEFAULT 'QR',
+  admitted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_ticket_attendance_booking (booking_id),
+  INDEX idx_ticket_attendance_show (show_id, admitted_at),
+  INDEX idx_ticket_attendance_theatre (theatre_id, admitted_at)
+);
+
+CREATE TABLE IF NOT EXISTS ticket_scan_logs (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  checker_user_id VARCHAR(80) NOT NULL,
+  booking_id VARCHAR(100) NULL,
+  selected_theatre_id VARCHAR(100) NULL,
+  selected_show_id VARCHAR(100) NULL,
+  result VARCHAR(50) NOT NULL,
+  reason VARCHAR(80) NULL,
+  metadata JSON NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_ticket_scan_logs_show (selected_show_id, created_at),
+  INDEX idx_ticket_scan_logs_checker (checker_user_id, created_at)
+);

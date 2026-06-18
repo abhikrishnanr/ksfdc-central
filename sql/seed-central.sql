@@ -2,6 +2,10 @@ INSERT INTO central_users (id, username, password_hash, role, force_password_cha
 VALUES ('CENTRAL_SUPERADMIN', 'superadmin', '$2b$10$JrYpRSUApTKeBwqHlNGEAeGcyPPP6MRJ7egLLJz96bIwN98hrQlwG', 'SUPER_ADMIN', TRUE)
 ON DUPLICATE KEY UPDATE username = VALUES(username), role = VALUES(role);
 
+INSERT INTO ticket_checker_users (id, username, password_hash, display_name, theatre_id, is_active)
+VALUES ('TICKET_CHECKER_DEFAULT', 'ticketchecker', '$2b$10$JrYpRSUApTKeBwqHlNGEAeGcyPPP6MRJ7egLLJz96bIwN98hrQlwG', 'Ticket Checker', NULL, TRUE)
+ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), is_active = TRUE;
+
 INSERT INTO theatres (id, code, name, city, status)
 VALUES ('TH_TVM001', 'TH_TVM001', 'KSFDC Demo Theatre', 'Thiruvananthapuram', 'ACTIVE')
 ON DUPLICATE KEY UPDATE name = VALUES(name), city = VALUES(city), status = VALUES(status);
