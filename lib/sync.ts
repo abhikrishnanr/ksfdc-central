@@ -44,6 +44,40 @@ async function dropIndexIfExists(tableName: string, indexName: string) {
   }
 }
 
+async function ensureHeartbeatTheatreKey() {
+  const pool = getCentralDbPool();
+  const [[uniqueTheatreKey]] = await pool.query<RowDataPacket[]>(
+    `SELECT COUNT(*) AS cnt
+     FROM INFORMATION_SCHEMA.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'theatre_heartbeats'
+       AND COLUMN_NAME = 'theatre_id'
+       AND NON_UNIQUE = 0`,
+  );
+  if (Number(uniqueTheatreKey.cnt) > 0) return;
+
+  await addColumnIfMissing(
+    'theatre_heartbeats',
+    'heartbeat_row_id',
+    'BIGINT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE FIRST',
+  );
+  await pool.query(
+    `DELETE older
+     FROM theatre_heartbeats older
+     INNER JOIN theatre_heartbeats newer
+       ON newer.theatre_id = older.theatre_id
+      AND (
+        newer.last_seen_at > older.last_seen_at
+        OR (newer.last_seen_at = older.last_seen_at AND newer.heartbeat_row_id > older.heartbeat_row_id)
+      )`,
+  );
+  await addIndexIfMissing(
+    'theatre_heartbeats',
+    'uq_theatre_heartbeats_theatre',
+    'UNIQUE KEY uq_theatre_heartbeats_theatre (theatre_id)',
+  );
+}
+
 async function initializeCentralHeartbeatTables() {
   await getCentralDbPool().query(`
     CREATE TABLE IF NOT EXISTS theatre_heartbeats (
@@ -67,6 +101,7 @@ async function initializeCentralHeartbeatTables() {
   await addColumnIfMissing('theatre_heartbeats', 'local_api_url', 'VARCHAR(255) NULL');
   await addColumnIfMissing('theatre_heartbeats', 'failed_local_events', 'INT NOT NULL DEFAULT 0');
   await addColumnIfMissing('theatre_heartbeats', 'trusted_for_admin_sync', 'TINYINT(1) NOT NULL DEFAULT 0');
+  await ensureHeartbeatTheatreKey();
 }
 
 export function ensureCentralHeartbeatTables() {
@@ -97,6 +132,7 @@ async function readTheatreHealth(theatreId: string, queryable: Pick<PoolConnecti
     `SELECT status, last_seen_at AS lastSeenAt, TIMESTAMPDIFF(SECOND, last_seen_at, NOW()) AS ageSeconds
      FROM theatre_heartbeats
      WHERE theatre_id = ?
+     ORDER BY last_seen_at DESC
      LIMIT 1`,
     [theatreId]
   );

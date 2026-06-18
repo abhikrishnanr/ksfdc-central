@@ -239,6 +239,7 @@ export async function getReconciliationDetail(showId: string, theatreIdScope?: s
     `SELECT pending_local_events AS pendingEvents, failed_local_events AS failedEvents, last_local_sequence AS lastLocalSequence
      FROM theatre_heartbeats
      WHERE theatre_id = ? AND trusted_for_admin_sync = 1
+     ORDER BY last_seen_at DESC
      LIMIT 1`,
     [theatreId]
   );
