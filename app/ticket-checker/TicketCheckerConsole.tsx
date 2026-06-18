@@ -12,12 +12,11 @@ type Ticket = { bookingId: string; showId: string; theatreId: string; theatreNam
 type ValidationResult = { success: boolean; outcome: 'VALID' | 'ALREADY_ADMITTED' | 'INVALID'; reason?: string | null; message: string; ticket?: Ticket; attendanceMarked?: boolean; admittedAt?: string };
 
 function localDateValue() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
 
 function formatShowTime(value: string) {
-  return new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit' }).format(new Date(value));
+  return new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' }).format(new Date(value));
 }
 
 function announce(result: ValidationResult) {
@@ -191,7 +190,7 @@ export default function TicketCheckerConsole({ session, theatres }: { session: {
                   <h2>{result.outcome === 'VALID' ? 'VALID TICKET' : result.outcome === 'ALREADY_ADMITTED' ? 'ALREADY CHECKED' : 'INVALID TICKET'}</h2>
                   <p className="checker-result-message">{result.message}</p>
                   {result.ticket ? <>
-                    <div className="checker-ticket-context"><strong>{result.ticket.movieTitle}</strong><span>{result.ticket.theatreName}</span><span>{result.ticket.screenName} · {new Date(result.ticket.showTime).toLocaleString('en-IN')}</span><small>{result.ticket.bookingId}</small></div>
+                    <div className="checker-ticket-context"><strong>{result.ticket.movieTitle}</strong><span>{result.ticket.theatreName}</span><span>{result.ticket.screenName} · {new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(result.ticket.showTime))}</span><small>{result.ticket.bookingId}</small></div>
                     <div className="checker-seat-callout">{result.ticket.groups.map((group) => <div key={group.zone}><span>{group.zone}</span><strong>{group.seats.join(', ')}</strong></div>)}</div>
                     <button className="checker-layout-button" type="button" onClick={viewSeats}><LayoutGrid size={20} /> View seats in layout</button>
                   </> : null}

@@ -9,7 +9,7 @@ type Show = { id: string; movieId: string; movieTitle: string; theatreId: string
 type Entry = { bookingId: string; admittedAt: string; source: string; checkerName: string; channel: string; totalAmount: number; seats: { zone: string; seatId: string }[] };
 type SheetData = { show: null | { id: string; theatreName: string; movieTitle: string; screenName: string; showTime: string }; admittedTickets: number; admittedSeats: number; entries: Entry[] };
 
-function localDateValue() { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; }
+function localDateValue() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
 
 export default function AttendanceSheet({ theatres }: { theatres: Theatre[] }) {
   const [theatreId, setTheatreId] = useState(theatres[0]?.id ?? '');
@@ -52,7 +52,7 @@ export default function AttendanceSheet({ theatres }: { theatres: Theatre[] }) {
         <div className="checker-selector-grid">
           <label>Theatre<select value={theatreId} onChange={(event) => setTheatreId(event.target.value)}>{theatres.map((theatre) => <option value={theatre.id} key={theatre.id}>{theatre.name}</option>)}</select></label>
           <label>Date<span className="checker-input-icon"><CalendarDays size={18} /><input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></span></label>
-          <label>Show<select value={showId} onChange={(event) => { setShowId(event.target.value); setData(null); }}><option value="">Select show</option>{shows.map((show) => <option value={show.id} key={show.id}>{show.movieTitle} · {new Date(show.showTime).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}</option>)}</select></label>
+          <label>Show<select value={showId} onChange={(event) => { setShowId(event.target.value); setData(null); }}><option value="">Select show</option>{shows.map((show) => <option value={show.id} key={show.id}>{show.movieTitle} · {new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' }).format(new Date(show.showTime))}</option>)}</select></label>
           <button className="checker-primary-button" type="button" disabled={!showId || loading} onClick={loadSheet}><RefreshCw size={18} /> {loading ? 'Loading…' : 'View attendance'}</button>
         </div>
       </section>
@@ -63,4 +63,3 @@ export default function AttendanceSheet({ theatres }: { theatres: Theatre[] }) {
     </section>
   );
 }
-

@@ -2,6 +2,7 @@ import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { getCentralDbPool } from './db';
 import { ensureTicketCheckerTables, type TicketCheckerSession } from './ticket-checker-auth';
 import { ticketVerificationTokenMatches } from './ticket-verification';
+import { formatTheatreDateTime, theatreDateTimeIso } from './theatre-time';
 
 type ParsedQr = { bookingId: string | null; showId: string | null; theatreId: string | null; token: string | null; source: 'SIGNED_QR' | 'LOCAL_QR' | 'MANUAL' | 'UNKNOWN' };
 
@@ -51,7 +52,7 @@ export async function getTicketCheckerTheatres(theatreScope?: string | null) {
 export async function getTicketCheckerShows(input: { theatreId: string; date: string; theatreScope?: string | null }) {
   if (input.theatreScope && input.theatreScope !== input.theatreId) return [];
   const [rows] = await getCentralDbPool().query<RowDataPacket[]>(
-    `SELECT s.id, s.show_time AS showTime, s.status, m.id AS movieId, m.title AS movieTitle,
+    `SELECT s.id, DATE_FORMAT(s.show_time, '%Y-%m-%dT%H:%i:%s') AS showTime, s.status, m.id AS movieId, m.title AS movieTitle,
             sc.id AS screenId, sc.name AS screenName, t.id AS theatreId, t.name AS theatreName
      FROM shows s
      JOIN movies m ON m.id = s.movie_id
@@ -65,7 +66,7 @@ export async function getTicketCheckerShows(input: { theatreId: string; date: st
     id: String(row.id), movieId: String(row.movieId), movieTitle: String(row.movieTitle),
     theatreId: String(row.theatreId), theatreName: String(row.theatreName),
     screenId: String(row.screenId), screenName: String(row.screenName),
-    showTime: new Date(row.showTime).toISOString(), status: String(row.status)
+    showTime: theatreDateTimeIso(row.showTime), status: String(row.status)
   }));
 }
 
@@ -95,7 +96,7 @@ export async function validateAndAdmitTicket(input: { rawValue: string; theatreI
     }
     const [[booking]] = await connection.query<RowDataPacket[]>(
       `SELECT b.id AS bookingId, b.show_id AS showId, b.status, b.channel, b.total_amount AS totalAmount,
-              s.theatre_id AS theatreId, s.show_time AS showTime, m.title AS movieTitle,
+              s.theatre_id AS theatreId, DATE_FORMAT(s.show_time, '%Y-%m-%dT%H:%i:%s') AS showTime, m.title AS movieTitle,
               t.name AS theatreName, sc.name AS screenName
        FROM central_bookings b
        JOIN shows s ON s.id = b.show_id
@@ -119,7 +120,7 @@ export async function validateAndAdmitTicket(input: { rawValue: string; theatreI
     const ticket = {
       bookingId: String(booking.bookingId), showId: String(booking.showId), theatreId: String(booking.theatreId),
       theatreName: String(booking.theatreName), movieTitle: String(booking.movieTitle), screenName: String(booking.screenName),
-      showTime: new Date(booking.showTime).toISOString(), status: String(booking.status), channel: String(booking.channel),
+      showTime: theatreDateTimeIso(booking.showTime), status: String(booking.status), channel: String(booking.channel),
       totalAmount: Number(booking.totalAmount ?? 0), groups: Array.from(groups, ([zone, seats]) => ({ zone, seats }))
     };
     let reason: string | null = null;
@@ -133,7 +134,7 @@ export async function validateAndAdmitTicket(input: { rawValue: string; theatreI
     if (reason) {
       await logScan(connection, { checkerUserId: input.session.userId, bookingId: ticket.bookingId, theatreId: input.theatreId, showId: input.showId, result: 'INVALID', reason, metadata: { ticketShowId: ticket.showId, ticketTheatreId: ticket.theatreId, source: parsed.source } });
       await connection.commit();
-      const message = reason === 'OTHER_THEATRE' ? `Valid ticket, but for ${ticket.theatreName}.` : reason === 'OTHER_SHOW' ? `Valid ticket, but for ${ticket.movieTitle} at ${new Date(ticket.showTime).toLocaleString('en-IN')}.` : 'This ticket cannot be admitted.';
+      const message = reason === 'OTHER_THEATRE' ? `Valid ticket, but for ${ticket.theatreName}.` : reason === 'OTHER_SHOW' ? `Valid ticket, but for ${ticket.movieTitle} at ${formatTheatreDateTime(ticket.showTime)}.` : 'This ticket cannot be admitted.';
       return { success: false, outcome: 'INVALID', reason, message, ticket };
     }
     const [insert] = await connection.query<ResultSetHeader>(
@@ -165,7 +166,7 @@ export async function getAttendanceSheet(showId: string, theatreScope?: string |
   const [rows] = await getCentralDbPool().query<RowDataPacket[]>(
     `SELECT a.booking_id AS bookingId, a.admitted_at AS admittedAt, a.admission_source AS source,
             u.display_name AS checkerName, b.channel, b.total_amount AS totalAmount,
-            s.id AS showId, s.theatre_id AS theatreId, s.show_time AS showTime,
+            s.id AS showId, s.theatre_id AS theatreId, DATE_FORMAT(s.show_time, '%Y-%m-%dT%H:%i:%s') AS showTime,
             m.title AS movieTitle, t.name AS theatreName, sc.name AS screenName
      FROM ticket_attendance a
      JOIN central_bookings b ON b.id = a.booking_id
@@ -189,9 +190,8 @@ export async function getAttendanceSheet(showId: string, theatreScope?: string |
   for (const item of items) itemMap.set(String(item.bookingId), [...(itemMap.get(String(item.bookingId)) ?? []), { zone: String(item.zone), seatId: String(item.seatId) }]);
   const first = rows[0];
   return {
-    show: { id: String(first.showId), theatreId: String(first.theatreId), theatreName: String(first.theatreName), movieTitle: String(first.movieTitle), screenName: String(first.screenName), showTime: new Date(first.showTime).toISOString() },
+    show: { id: String(first.showId), theatreId: String(first.theatreId), theatreName: String(first.theatreName), movieTitle: String(first.movieTitle), screenName: String(first.screenName), showTime: theatreDateTimeIso(first.showTime) },
     admittedTickets: rows.length, admittedSeats: items.length,
     entries: rows.map((row) => ({ bookingId: String(row.bookingId), admittedAt: new Date(row.admittedAt).toISOString(), source: String(row.source), checkerName: String(row.checkerName ?? 'Checker'), channel: String(row.channel), totalAmount: Number(row.totalAmount ?? 0), seats: itemMap.get(String(row.bookingId)) ?? [] }))
   };
 }
-
