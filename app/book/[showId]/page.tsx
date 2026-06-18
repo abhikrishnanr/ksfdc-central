@@ -13,8 +13,10 @@ function formatTime(value: string) {
 
 export default async function CentralBookingPage({ params }: { params: Promise<{ showId: string }> }) {
   const { showId } = await params;
-  const { dbStatus, data: show } = await getAuthorityAwareBookingShow(showId);
-  const todayShows = await getTodaysShows();
+  const [{ dbStatus, data: show }, todayShows] = await Promise.all([
+    getAuthorityAwareBookingShow(showId),
+    getTodaysShows()
+  ]);
 
   if (!show) {
     return (

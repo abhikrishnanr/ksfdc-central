@@ -2,12 +2,14 @@ import type { ReactNode } from 'react';
 import { Suspense } from 'react';
 import PublicHeader from '../components/template/PublicHeader';
 import PublicFooter from '../components/template/PublicFooter';
+import NavigationWarmup from '../components/template/NavigationWarmup';
 import './globals.css';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
+        <NavigationWarmup />
         <div className="app-shell">
           <Suspense fallback={null}>
             <PublicHeader />
