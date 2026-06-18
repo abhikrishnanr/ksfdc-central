@@ -52,6 +52,7 @@ export default function ShareableTicketCard({ ticket }: { ticket: ShareableTicke
     verificationUrl: ticket.verificationUrl,
     verificationToken: ticket.verificationToken
   }), [ticket]);
+  const seatCount = ticket.groups.reduce((count, group) => count + group.seats.length, 0);
 
   useEffect(() => {
     QRCode.toDataURL(qrPayload, { margin: 1, width: 240 }).then(setQrDataUrl).catch(() => setQrDataUrl(''));
@@ -164,6 +165,40 @@ export default function ShareableTicketCard({ ticket }: { ticket: ShareableTicke
           </div>
         </div>
       </div>
+      <article className="central-thermal-ticket" aria-label={`Printable ticket ${ticket.ticketNumber}`}>
+        <header className="thermal-ticket-heading">
+          <p>KSFDC TICKETS</p>
+          <h1>{ticket.theatreName}</h1>
+        </header>
+        <section className="thermal-admit-box">
+          <span>ADMIT</span><strong>{seatCount}</strong><small>{seatCount === 1 ? 'GUEST' : 'GUESTS'}</small>
+        </section>
+        <section className="thermal-show-block">
+          <p>NOW SHOWING</p><h2>{ticket.movieTitle}</h2>
+          <div className="thermal-detail-grid">
+            <span><small>SCREEN</small><strong>{ticket.screenName}</strong></span>
+            <span><small>SHOW TIME</small><strong>{formatTime(ticket.showTime)}</strong></span>
+          </div>
+        </section>
+        <section className="thermal-seat-list">
+          {ticket.groups.map((group) => <div className="thermal-seat-box" key={group.zone}>
+            <span>ZONE</span><strong>{group.zone}</strong>
+            <small>SEAT {group.seats.length === 1 ? 'NUMBER' : 'NUMBERS'}</small><b>{group.seats.join(', ')}</b>
+          </div>)}
+        </section>
+        <section className="thermal-payment-row">
+          <span><small>TOTAL</small><strong>{money(ticket.totalAmount)}</strong></span>
+          <span><small>PAYMENT</small><strong>{ticket.paymentMode?.replaceAll('_', ' ') ?? 'RECORDED'}</strong></span>
+        </section>
+        <section className="thermal-qr-block">
+          {qrDataUrl ? <img src={qrDataUrl} alt="Ticket verification QR code" /> : null}
+          <small>SCAN TO VERIFY</small><strong>{ticket.bookingId}</strong>
+        </section>
+        <footer className="thermal-ticket-footer">
+          <p>{ticket.counterCode ? `Counter ${ticket.counterCode} · ` : ''}Ticket {ticket.ticketNumber}</p>
+          <p>Issued {formatTime(ticket.issuedAt)}</p><strong>THANK YOU. ENJOY THE SHOW!</strong>
+        </footer>
+      </article>
       <div className="ticket-actions no-print">
         <button type="button" className="action-button primary" onClick={downloadTicket}>Download ticket</button>
         <button type="button" className="action-button" onClick={shareTicket}>Share ticket</button>

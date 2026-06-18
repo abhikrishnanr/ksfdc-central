@@ -49,7 +49,8 @@ export default function TicketCheckerConsole({ session, theatres }: { session: {
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [validating, setValidating] = useState(false);
   const [layout, setLayout] = useState<{ show: BookingShowDetail; ticketSeats: string[] } | null>(null);
-  const scannerRef = useRef<{ start: (...args: unknown[]) => Promise<unknown>; stop: () => Promise<unknown>; clear: () => void } | null>(null);
+  const scannerRef = useRef<{ start: (...args: unknown[]) => Promise<unknown>; stop: () => Promise<unknown>; clear: () => void; isScanning?: boolean } | null>(null);
+  const cameraStartingRef = useRef(false);
   const processingRef = useRef(false);
   const selectedShow = shows.find((show) => show.id === showId) ?? null;
   const movies = useMemo(() => Array.from(new Map(shows.map((show) => [show.movieId, { id: show.movieId, title: show.movieTitle }])).values()), [shows]);
@@ -75,7 +76,9 @@ export default function TicketCheckerConsole({ session, theatres }: { session: {
     const scanner = scannerRef.current;
     scannerRef.current = null;
     if (scanner) {
-      try { await scanner.stop(); } catch { /* Camera may already be stopped. */ }
+      if (scanner.isScanning) {
+        try { await scanner.stop(); } catch { /* Camera may already be stopped. */ }
+      }
       try { scanner.clear(); } catch { /* Reader may already be cleared. */ }
     }
     setCameraActive(false);
@@ -107,10 +110,15 @@ export default function TicketCheckerConsole({ session, theatres }: { session: {
   }, [showId, stopCamera, theatreId]);
 
   const startCamera = useCallback(async () => {
+    if (cameraStartingRef.current || cameraActive) return;
+    cameraStartingRef.current = true;
     setCameraError('');
     setResult(null);
     await stopCamera();
     try {
+      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Camera access requires HTTPS or localhost.');
+      }
       const { Html5Qrcode } = await import('html5-qrcode');
       const scanner = new Html5Qrcode('ticket-checker-camera');
       scannerRef.current = scanner as unknown as typeof scannerRef.current;
@@ -121,12 +129,22 @@ export default function TicketCheckerConsole({ session, theatres }: { session: {
         () => undefined
       );
       setCameraActive(true);
-    } catch {
+    } catch (error) {
+      const scanner = scannerRef.current;
       scannerRef.current = null;
+      if (scanner?.isScanning) {
+        try { await scanner.stop(); } catch { /* Startup may have stopped already. */ }
+      }
+      try { scanner?.clear(); } catch { /* Reader may not have mounted. */ }
       setCameraActive(false);
-      setCameraError('Camera could not start. Allow camera access, or enter the booking ID manually.');
+      const message = error instanceof Error && error.message.includes('HTTPS')
+        ? error.message
+        : 'Camera could not start. Allow camera access in the browser, close other camera apps, and try again.';
+      setCameraError(`${message} You can also enter the booking ID manually.`);
+    } finally {
+      cameraStartingRef.current = false;
     }
-  }, [stopCamera, validateTicket]);
+  }, [cameraActive, stopCamera, validateTicket]);
 
   useEffect(() => () => { void stopCamera(); }, [stopCamera]);
 
@@ -175,8 +193,9 @@ export default function TicketCheckerConsole({ session, theatres }: { session: {
           <div className="checker-live-grid">
             <section className="checker-scanner-panel">
               <div className="checker-panel-heading"><div><p className="eyebrow">Live scanner</p><h2>Scan ticket QR</h2></div><Volume2 size={21} aria-label="Audio announcements enabled" /></div>
-              <div id="ticket-checker-camera" className={`checker-camera${cameraActive ? ' is-active' : ''}`}>
-                {!cameraActive ? <div><Camera size={54} /><strong>Camera ready</strong><span>Point the phone at the ticket QR</span></div> : null}
+              <div className={`checker-camera${cameraActive ? ' is-active' : ''}`}>
+                <div id="ticket-checker-camera" className="checker-camera-reader" />
+                {!cameraActive ? <div className="checker-camera-placeholder"><Camera size={54} /><strong>Camera ready</strong><span>Point the phone at the ticket QR</span></div> : null}
               </div>
               {cameraError ? <div className="checker-inline-error">{cameraError}</div> : null}
               <button className="checker-camera-button" type="button" onClick={cameraActive ? stopCamera : startCamera}>{cameraActive ? <><StopCircle /> Stop camera</> : <><Camera /> Open camera scanner</>}</button>

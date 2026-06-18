@@ -1304,6 +1304,43 @@ p { color: var(--muted); line-height: 1.6; }
   gap: 0.6rem;
 }
 
+.central-thermal-ticket { display: none; }
+
+.central-thermal-ticket p,
+.central-thermal-ticket h1,
+.central-thermal-ticket h2 { margin: 0; color: inherit; }
+.thermal-ticket-heading { display: grid; gap: 1mm; padding-bottom: 3mm; text-align: center; }
+.thermal-ticket-heading p { font-size: 9pt; font-weight: 900; letter-spacing: 0.12em; }
+.thermal-ticket-heading h1 { font-size: 17pt; line-height: 1.05; }
+.thermal-admit-box { display: grid; grid-template-columns: 1fr auto; align-items: center; border: 0.7mm solid #111; border-radius: 4mm; padding: 2.5mm 4mm; }
+.thermal-admit-box span { grid-row: 1 / span 2; font-size: 22pt; font-weight: 950; line-height: 1; }
+.thermal-admit-box strong { font-size: 28pt; line-height: 0.9; text-align: center; }
+.thermal-admit-box small { font-size: 7pt; font-weight: 900; text-align: center; }
+.thermal-show-block { display: grid; gap: 2mm; border-bottom: 0.4mm dashed #111; padding-block: 4mm; text-align: center; }
+.thermal-show-block > p,
+.thermal-seat-box > span { font-size: 7pt; font-weight: 900; letter-spacing: 0.1em; }
+.thermal-show-block h2 { font-size: 19pt; line-height: 1.05; overflow-wrap: anywhere; }
+.thermal-detail-grid,
+.thermal-payment-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2mm; }
+.thermal-detail-grid span,
+.thermal-payment-row span { display: grid; align-content: start; gap: 1mm; border: 0.35mm solid #111; border-radius: 2.5mm; padding: 2mm; }
+.thermal-detail-grid small,
+.thermal-payment-row small,
+.thermal-seat-box small,
+.thermal-qr-block small { font-size: 7pt; font-weight: 900; letter-spacing: 0.06em; }
+.thermal-detail-grid strong { font-size: 9pt; line-height: 1.2; }
+.thermal-seat-list { display: grid; gap: 2mm; padding-block: 3mm; }
+.thermal-seat-box { display: grid; grid-template-columns: auto 1fr; gap: 0.5mm 3mm; align-items: center; border: 0.7mm solid #111; border-radius: 4mm; padding: 2.5mm 3mm; }
+.thermal-seat-box > strong { font-size: 15pt; line-height: 1; text-align: right; overflow-wrap: anywhere; }
+.thermal-seat-box > b { grid-column: 1 / -1; font-size: 24pt; line-height: 1.05; text-align: center; overflow-wrap: anywhere; }
+.thermal-payment-row { border-block: 0.4mm dashed #111; padding-block: 3mm; }
+.thermal-payment-row strong { font-size: 12pt; line-height: 1.1; overflow-wrap: anywhere; }
+.thermal-qr-block { display: grid; place-items: center; gap: 1mm; padding-block: 3mm; text-align: center; }
+.thermal-qr-block img { width: 42mm; height: 42mm; border: 0; border-radius: 0; image-rendering: pixelated; }
+.thermal-qr-block strong { max-width: 100%; font-size: 8pt; overflow-wrap: anywhere; }
+.thermal-ticket-footer { display: grid; gap: 1mm; border-top: 0.4mm dashed #111; padding-top: 3mm; font-size: 8pt; text-align: center; }
+.thermal-ticket-footer strong { margin-top: 2mm; font-size: 10pt; }
+
 .public-topbar {
   position: sticky;
   top: 0;
@@ -3169,7 +3206,9 @@ p { color: var(--muted); line-height: 1.6; }
   border-radius: 8px;
   background: #03070b;
 }
-.checker-camera > div { display: grid; justify-items: center; gap: 0.65rem; color: #708094; text-align: center; }
+.checker-camera-reader { position: absolute; inset: 0; width: 100%; height: 100%; }
+.checker-camera-reader:empty { display: block; }
+.checker-camera-placeholder { position: relative; z-index: 1; display: grid; justify-items: center; gap: 0.65rem; color: #708094; text-align: center; pointer-events: none; }
 .checker-camera video { width: 100% !important; min-height: 360px; object-fit: cover; }
 .checker-camera-button { width: 100%; margin-top: 0.75rem; color: #f8fafc; background: #1b2938; }
 .checker-manual-entry { display: grid; gap: 0.55rem; margin-top: 1.25rem; }
@@ -3290,17 +3329,9 @@ body:has(.checker-login-page) .page-frame { width: 100%; max-width: none; paddin
 }
 
 @media print {
-  body {
-    background: #fff !important;
-    color: #111 !important;
-  }
-  .topbar, .no-print { display: none !important; }
-  .page-frame { width: 100%; padding: 0; }
-  .ticket-card {
-    color: #111;
-    background: #fff !important;
-    box-shadow: none;
-    border-color: #111;
-  }
-  .ticket-card p, .ticket-card span { color: #111; }
+  @page { size: 80mm auto; margin: 0; }
+  html, body { width: 80mm !important; min-width: 80mm !important; margin: 0 !important; padding: 0 !important; color: #000 !important; background: #fff !important; }
+  .topbar, .no-print, .share-ticket-card { display: none !important; }
+  .page-frame, .share-ticket-wrap { display: block !important; width: 80mm !important; margin: 0 !important; padding: 0 !important; }
+  .central-thermal-ticket { box-sizing: border-box; display: block !important; width: 80mm !important; margin: 0 !important; padding: 3mm 4mm 4mm !important; color: #000 !important; background: #fff !important; font-family: Arial, Helvetica, sans-serif; letter-spacing: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
