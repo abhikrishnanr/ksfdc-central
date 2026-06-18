@@ -7,6 +7,7 @@ import QuickBookCard from '../components/template/QuickBookCard';
 import NowShowingRail from '../components/template/NowShowingRail';
 import TheatreNetworkCard from '../components/template/TheatreNetworkCard';
 import NoticesCard from '../components/template/NoticesCard';
+import { BadgeCheck, Headphones, MapPinned, Sparkles } from 'lucide-react';
 
 export default async function HomePage({ searchParams }: { searchParams?: Promise<{ city?: string }> }) {
   const params = await searchParams;
@@ -22,10 +23,10 @@ export default async function HomePage({ searchParams }: { searchParams?: Promis
       <div className="home-main-column">
         <HeroCarousel movie={featured} show={featuredShow} />
         <section className="feature-strip">
-          <div><span>OK</span><strong>Official Portal</strong><small>Trusted & Secure</small></div>
-          <div><span>IN</span><strong>Wide Network</strong><small>Theatres across Kerala</small></div>
-          <div><span>5*</span><strong>Best Experience</strong><small>Easy Booking</small></div>
-          <div><span>24</span><strong>Support</strong><small>Help & Assistance</small></div>
+          <div><span><BadgeCheck /></span><strong>Official Portal</strong><small>Verified and secure</small></div>
+          <div><span><MapPinned /></span><strong>Across Kerala</strong><small>Connected theatres</small></div>
+          <div><span><Sparkles /></span><strong>Easy Booking</strong><small>Seats in a few taps</small></div>
+          <div><span><Headphones /></span><strong>Guest Support</strong><small>Help when needed</small></div>
         </section>
         <NowShowingRail movies={movies.slice(0, 8)} />
         <section className="supporting-cinema-banner">

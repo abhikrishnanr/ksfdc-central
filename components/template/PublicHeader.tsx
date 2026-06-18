@@ -179,23 +179,28 @@ export default function PublicHeader() {
   ) : null;
 
   if (!official) {
+    const primaryNav = nav.filter((item) => !['Sign in', 'My tickets', 'Events', 'Cinema News'].includes(item.label));
+    const accountItem = nav.find((item) => item.label === 'Sign in' || item.label === 'My tickets');
     return (
       <header className="public-topbar">
-        <Link className="brand-lockup public-brand" href="/">
-          <span className="brand-mark">KT</span>
-          <span>
-            <span className="brand-title">KSFDC Tickets</span><br />
-            <span className="brand-subtitle">Kerala State Film Development Corporation</span>
-          </span>
-        </Link>
+        <div className="public-header-main">
+          <Link className="brand-lockup public-brand" href="/">
+            <span className="brand-mark">KT</span>
+            <span>
+              <span className="brand-title">KSFDC Tickets</span><br />
+              <span className="brand-subtitle">Kerala State Film Development Corporation</span>
+            </span>
+          </Link>
 
-        <div className="public-header-controls">
-          <label className="city-select">
-            <select value={city} onChange={(event) => updateCity(event.target.value)} aria-label="City">
-              {cityOptions.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-          </label>
+          <div className="public-header-utilities">
+            <label className="city-select">
+              <MapPin size={17} aria-hidden="true" />
+              <select value={city} onChange={(event) => updateCity(event.target.value)} aria-label="City">
+                {cityOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </label>
           <div className={`public-search ${searchOpen ? 'open' : ''}`} ref={searchRef}>
+            <Search size={18} aria-hidden="true" />
             <input
               value={query}
               onChange={(event) => { const value = event.target.value; setQuery(value); if (value.trim().length < 2) setSuggestions([]); setSearchOpen(true); }}
@@ -206,16 +211,7 @@ export default function PublicHeader() {
             />
             {searchOpen ? suggestionList : null}
           </div>
-          <nav className="public-nav" aria-label="Public navigation">
-            {nav.map((item) => item.label === 'Sign in'
-              ? <Link className="login-signup-button" key={item.href} href={item.href}>Login / Sign Up</Link>
-              : <Link className={isActive(item.href) ? 'active' : ''} key={`${item.label}-${item.href}`} href={publicHref(item.href)}>{item.label}</Link>)}
             <button className="header-icon-button" type="button" aria-label="Notifications"><Bell size={18} /></button>
-            <label className="language-select" aria-label="Language">
-              <select defaultValue="EN"><option value="EN">EN</option><option value="ML">ML</option></select>
-            </label>
-            <Link className="theatre-login-link" href="/official/login">Theatre Login</Link>
-          </nav>
           {auth.authenticated ? (
             <div className="account-menu">
               <button type="button" className="avatar-button" onClick={() => setAccountOpen((value) => !value)}>
@@ -228,12 +224,24 @@ export default function PublicHeader() {
                 </div>
               ) : null}
             </div>
-          ) : null}
+            ) : accountItem ? <Link className="login-signup-button" href={accountItem.href}><UserRound size={17} /> Login / Sign Up</Link> : null}
+          </div>
+
+          <button className="mobile-menu-button" type="button" onClick={() => setMobileOpen(true)} aria-label="Open menu" aria-expanded={mobileOpen}>
+            <Menu size={24} />
+          </button>
         </div>
 
-        <button className="mobile-menu-button" type="button" onClick={() => setMobileOpen(true)} aria-label="Open menu" aria-expanded={mobileOpen}>
-          <Menu size={24} />
-        </button>
+        <div className="public-header-navrow">
+          <nav className="public-nav" aria-label="Public navigation">
+            {primaryNav.map((item) => <Link className={isActive(item.href) ? 'active' : ''} key={`${item.label}-${item.href}`} href={publicHref(item.href)}>{item.label}</Link>)}
+          </nav>
+          <div className="public-partner-actions">
+            {auth.authenticated && accountItem ? <Link href={accountItem.href}><Ticket size={17} /> My tickets</Link> : null}
+            <Link className="theatre-login-link" href="/official/login"><ShieldCheck size={17} /> Theatre Login</Link>
+            <label className="language-select" aria-label="Language"><Languages size={17} /><select defaultValue="EN"><option value="EN">EN</option><option value="ML">ML</option></select></label>
+          </div>
+        </div>
 
         <button className={`mobile-drawer-backdrop ${mobileOpen ? 'open' : ''}`} type="button" aria-label="Close menu" onClick={() => setMobileOpen(false)} />
         <aside className={`mobile-nav-drawer ${mobileOpen ? 'open' : ''}`} aria-hidden={!mobileOpen}>
@@ -255,7 +263,7 @@ export default function PublicHeader() {
           </div>
 
           <nav className="mobile-drawer-nav" aria-label="Mobile navigation">
-            {nav.map((item, index) => (
+            {[...primaryNav, ...(accountItem ? [accountItem] : [])].map((item, index) => (
               <Link
                 className={`${isActive(item.href) ? 'active' : ''} drawer-color-${index % 5}`}
                 key={`${item.label}-${item.href}`}
@@ -263,7 +271,7 @@ export default function PublicHeader() {
                 onClick={() => setMobileOpen(false)}
               >
                 <span className="drawer-nav-icon"><NavigationIcon href={item.href} /></span>
-                <span><strong>{item.label === 'Sign in' ? 'Login / Sign Up' : item.label}</strong><small>{item.href.startsWith('/profile/tickets') ? 'View bookings and tickets' : item.href.startsWith('/theatres') ? 'Explore theatre network' : item.href.startsWith('/shows') ? 'Find showtimes near you' : item.href.startsWith('/movies') ? 'Browse now showing' : item.href === '/' ? 'Discover cinema' : 'Account and preferences'}</small></span>
+                <span><strong>{item.label === 'Sign in' ? 'Login / Sign Up' : item.label}</strong><small>{item.href.startsWith('/profile/tickets') ? 'View bookings and tickets' : item.href.startsWith('/theatres') ? 'Explore theatre network' : item.href.startsWith('/shows') ? 'Find showtimes near you' : item.href.startsWith('/movies') ? 'Browse now showing' : item.href === '/' ? 'Discover cinema' : item.href === '/about' ? 'Our mission and network' : 'Account and preferences'}</small></span>
               </Link>
             ))}
           </nav>

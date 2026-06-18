@@ -1,5 +1,6 @@
 'use client';
 
+import { Building2, CalendarDays, Clapperboard, MapPin, Search, Ticket } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -33,33 +34,12 @@ export default function QuickBookCard({ movies, theatres }: { movies: QuickBookM
 
   return (
     <section className="quick-book-card">
-      <h2><span>🎟</span> Quick Book</h2>
-      <label>
-        <span>⌖</span>
-        <select value={city} onChange={(event) => { setCity(event.target.value); setTheatreId(''); }}>
-          <option value="">Select City / Location</option>
-          {cities.map((item) => <option key={item} value={item}>{item}</option>)}
-        </select>
-      </label>
-      <label>
-        <span>▣</span>
-        <select value={theatreId} onChange={(event) => setTheatreId(event.target.value)}>
-          <option value="">Select Theatre</option>
-          {filteredTheatres.map((theatre) => <option key={theatre.id} value={theatre.id}>{theatre.name}</option>)}
-        </select>
-      </label>
-      <label>
-        <span>▦</span>
-        <select value={movieId} onChange={(event) => setMovieId(event.target.value)}>
-          <option value="">Select Movie</option>
-          {movies.map((movie) => <option key={movie.id} value={movie.id}>{movie.title}</option>)}
-        </select>
-      </label>
-      <label>
-        <span>▤</span>
-        <input type="date" value={date} min={todayInput(0)} max={todayInput(2)} onChange={(event) => setDate(event.target.value)} />
-      </label>
-      <button className="gold-button wide" type="button" onClick={findShows}>Find Shows</button>
+      <h2><span><Ticket size={20} /></span> Quick Book</h2>
+      <label><span><MapPin size={19} /></span><select value={city} onChange={(event) => { setCity(event.target.value); setTheatreId(''); }} aria-label="Select city"><option value="">Select City / Location</option>{cities.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+      <label><span><Building2 size={19} /></span><select value={theatreId} onChange={(event) => setTheatreId(event.target.value)} aria-label="Select theatre"><option value="">Select Theatre</option>{filteredTheatres.map((theatre) => <option key={theatre.id} value={theatre.id}>{theatre.name}</option>)}</select></label>
+      <label><span><Clapperboard size={19} /></span><select value={movieId} onChange={(event) => setMovieId(event.target.value)} aria-label="Select movie"><option value="">Select Movie</option>{movies.map((movie) => <option key={movie.id} value={movie.id}>{movie.title}</option>)}</select></label>
+      <label><span><CalendarDays size={19} /></span><input aria-label="Select show date" type="date" value={date} min={todayInput(0)} max={todayInput(2)} onChange={(event) => setDate(event.target.value)} /></label>
+      <button className="gold-button wide" type="button" onClick={findShows}><Search size={18} /> Find Shows</button>
     </section>
   );
 }
