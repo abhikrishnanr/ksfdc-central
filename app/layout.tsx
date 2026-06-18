@@ -1,0 +1,25 @@
+import type { ReactNode } from 'react';
+import { Suspense } from 'react';
+import PublicHeader from '../components/template/PublicHeader';
+import PublicFooter from '../components/template/PublicFooter';
+import MobileBottomNav from '../components/template/MobileBottomNav';
+import './globals.css';
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <div className="app-shell">
+          <Suspense fallback={null}>
+            <PublicHeader />
+          </Suspense>
+          <main className="page-frame">{children}</main>
+          <Suspense fallback={null}>
+            <PublicFooter />
+            <MobileBottomNav />
+          </Suspense>
+        </div>
+      </body>
+    </html>
+  );
+}

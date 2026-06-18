@@ -1,0 +1,290 @@
+{
+  "status": "success",
+  "total_results": 5,
+  "data": [
+    {
+      "movie_id": "drishyam_3_2026",
+      "title": "Drishyam 3",
+      "language": "Malayalam",
+      "genre": ["Drama", "Thriller", "Mystery"],
+      "runtime_minutes": 159,
+      "censor_rating": "UA",
+      "release_date": "2026-05-21",
+      "poster_url": "https://upload.wikimedia.org/wikipedia/en/a/a1/Drishyam_3_poster.jpg",
+      "youtube_trailer_url": "https://youtu.be/07h9Y1XKBWI?si=35xqQ-McHPIrRRJH",
+      "synopsis": "The third installment of the legendary thriller franchise. Georgekutty is forced back into the spotlight as an unexpected twist in the decades-old investigation uncovers fresh forensic evidence, putting his family's freedom back on the line.",
+      "cast": [
+        {
+          "name": "Mohanlal",
+          "character_name": "Georgekutty",
+          "role": "Lead Actor",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/c/c9/Mohanlal_%28cropped%29.jpg"
+        },
+        {
+          "name": "Meena",
+          "character_name": "Rani George",
+          "role": "Lead Actress",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/2/23/Meena_Actress_Profile.jpg"
+        },
+        {
+          "name": "Siddique",
+          "character_name": "Prabhakar",
+          "role": "Supporting Actor",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Siddique_Actor.jpg"
+        },
+        {
+          "name": "Murali Gopy",
+          "character_name": "IG Thomas",
+          "role": "Antagonist",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Murali_Gopy_Profile.jpg"
+        }
+      ],
+      "crew": {
+        "director": {
+          "name": "Jeethu Joseph",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/e/e0/Jeethu_Joseph_Director.jpg"
+        },
+        "producers": [
+          {
+            "name": "Antony Perumbavoor",
+            "company": "Aashirvad Cinemas"
+          }
+        ],
+        "screenplay": ["Jeethu Joseph"],
+        "music_directors": ["Anil Johnson"],
+        "cinematographer": "Satheesh Kurup",
+        "editor": "V. S. Vinayak"
+      },
+      "show_details": {
+        "formats_available": ["2D", "4K Dolby Atmos"],
+        "languages_available": ["Malayalam", "Tamil", "Telugu", "Hindi"]
+      }
+    },
+    {
+      "movie_id": "athiradi_2026",
+      "title": "Athiradi",
+      "language": "Malayalam",
+      "genre": ["Action", "Comedy"],
+      "runtime_minutes": 145,
+      "censor_rating": "U",
+      "release_date": "2026-05-14",
+      "poster_url": "https://upload.wikimedia.org/wikipedia/en/9/91/Athiradi.jpg",
+      "youtube_trailer_url": "https://www.youtube.com/watch?v=vAhsmTykuXg",
+      "synopsis": "Samkutty, a passionate engineering student, takes it upon himself to revive his college's legendary 'Arohan' festival. His plans hit a brick wall when he clashes with Sreekuttan, a reformed local goon turned musician who was originally responsible for getting the fest banned years ago.",
+      "cast": [
+        {
+          "name": "Tovino Thomas",
+          "character_name": "Samkutty (Sam Boy)",
+          "role": "Lead Actor",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/a/ab/Tovino_Thomas_SIIMA.jpg"
+        },
+        {
+          "name": "Basil Joseph",
+          "character_name": "Sreekuttan (Thotta Kuttan)",
+          "role": "Parallel Lead / Antagonist",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/1/10/Basil_Joseph_2024.jpg"
+        },
+        {
+          "name": "Vineeth Sreenivasan",
+          "character_name": "College Principal",
+          "role": "Supporting Actor",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Vineeth_Sreenivasan_Profile.jpg"
+        },
+        {
+          "name": "Riya Shibu",
+          "character_name": "Swathy",
+          "role": "Lead Actress",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/d/d4/Riya_Shibu_Placeholder.jpg"
+        }
+      ],
+      "crew": {
+        "director": {
+          "name": "Arun Anirudhan",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/5/5a/Arun_Anirudhan_Director.jpg"
+        },
+        "producers": [
+          {
+            "name": "Shibu Thameens",
+            "company": "Thameens Films"
+          }
+        ],
+        "screenplay": ["Arun Anirudhan"],
+        "music_directors": ["Vishnu Vijay"],
+        "cinematographer": "Roby Varghese Raj",
+        "editor": "Kiran Das"
+      },
+      "show_details": {
+        "formats_available": ["2D"],
+        "languages_available": ["Malayalam"]
+      }
+    },
+    {
+      "movie_id": "mollywood_times_2026",
+      "title": "Mollywood Times",
+      "language": "Malayalam",
+      "genre": ["Comedy", "Drama", "Satire"],
+      "runtime_minutes": 168,
+      "censor_rating": "UA",
+      "release_date": "2026-06-05",
+      "poster_url": "https://upload.wikimedia.org/wikipedia/en/e/e7/Mollywood_Times_Poster.jpeg",
+      "youtube_trailer_url": "https://www.youtube.com/watch?v=eRMXfu_eJb8",
+      "synopsis": "A meta-satirical comedy peeling back the curtains on modern cinema culture in Kerala. The film follows a struggling indie director attempting to retain artistic control while handling a chaotic young superstar trapped inside overnight internet cancel trends.",
+      "cast": [
+        {
+          "name": "Naslen K. Gafoor",
+          "character_name": "Sidharth",
+          "role": "Lead Actor",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/8/8a/Naslen_Gafoor_Profile.jpg"
+        },
+        {
+          "name": "Sharafudheen",
+          "character_name": "Producer Manoj",
+          "role": "Parallel Lead",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/c/c5/Sharafudheen_Actor.jpg"
+        },
+        {
+          "name": "Sangeeth Prathap",
+          "character_name": "Imthiyas",
+          "role": "Supporting Actor",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/b/b8/Sangeeth_Prathap.jpg"
+        }
+      ],
+      "crew": {
+        "director": {
+          "name": "Abhinav Sunder Nayak",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/6/6a/Abhinav_Sunder_Nayak.jpg"
+        },
+        "producers": [
+          {
+            "name": "Ashiq Usman",
+            "company": "Ashiq Usman Productions"
+          }
+        ],
+        "screenplay": ["Abhinav Sunder Nayak", "Sandeep Raj"],
+        "music_directors": ["Vishnu Vijay"],
+        "cinematographer": "Nimish Ravi",
+        "editor": "Chaman Chakko"
+      },
+      "show_details": {
+        "formats_available": ["2D"],
+        "languages_available": ["Malayalam"]
+      }
+    },
+    {
+      "movie_id": "secret_of_kalinga_2026",
+      "title": "Secret of Kalinga",
+      "language": "Malayalam",
+      "genre": ["Horror", "Comedy", "Mystery"],
+      "runtime_minutes": 134,
+      "censor_rating": "UA",
+      "release_date": "2026-06-11",
+      "poster_url": "https://images.filmibeat.com/webp/280x383/img/popcorn/movie_posters/secretofkalinga-20260423104806-24350.jpg",
+       "youtube_trailer_url": "https://www.youtube.com/watch?v=MRwWrzYkfbY",
+	  "synopsis": "A horror-comedy set within a college campus built adjacent to ancient architectural ruins. When a group of students accidentally unseal a cursed historic well on the property, a 400-year-old spirit breaks out, sparking supernatural chaos.",
+      "cast": [
+        {
+          "name": "Dhyan Sreenivasan",
+          "character_name": "Rahul",
+          "role": "Lead Actor",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/6/63/Dhyan_Sreenivasan_Profile.jpg"
+        },
+        {
+          "name": "Althaf Salim",
+          "character_name": "Sabu",
+          "role": "Comic Relief",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/f/fc/Althaf_Salim_Actor.jpg"
+        },
+        {
+          "name": "Riyaz Khan",
+          "character_name": "Kalinga Ghost",
+          "role": "Antagonist",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/8/87/Riyaz_Khan_Profile.jpg"
+        },
+        {
+          "name": "Malavika Menon",
+          "character_name": "Sruthi",
+          "role": "Lead Actress",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/3/3c/Malavika_Menon_Profile.jpg"
+        }
+      ],
+      "crew": {
+        "director": {
+          "name": "Ratheesh Raghunandan",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/d/de/Ratheesh_R_Director.jpg"
+        },
+        "producers": [
+          {
+            "name": "Listin Stephen",
+            "company": "Magic Frames"
+          }
+        ],
+        "screenplay": ["Sanjeev Nair"],
+        "music_directors": ["Jakes Bejoy"],
+        "cinematographer": "Madhu Neelakandan",
+        "editor": "Shameer Muhammed"
+      },
+      "show_details": {
+        "formats_available": ["2D"],
+        "languages_available": ["Malayalam"]
+      }
+    },
+    {
+      "movie_id": "varavu_2026",
+      "title": "Varavu",
+      "language": "Malayalam",
+      "genre": ["Action", "Thriller"],
+      "runtime_minutes": 142,
+      "censor_rating": "A",
+      "release_date": "2026-06-12",
+      "poster_url": "https://upload.wikimedia.org/wikipedia/en/a/a2/Varavu_Malayalam_2026_Poster.jpg",
+      "youtube_trailer_url": "https://www.youtube.com/watch?v=2v1JAY6sqo0",
+      "synopsis": "Polachan, an influential high-range planter, finds himself dragged back down to his ancestral plains under mysterious circumstances. His homecoming rapidly devolves into a desperate survival gauntlet as cold blood feuds and violent family grudges resurface.",
+      "cast": [
+        {
+          "name": "Joju George",
+          "character_name": "Polachan (Poly)",
+          "role": "Lead Actor",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/1/14/Joju_George_Profile.jpg"
+        },
+        {
+          "name": "Vani Viswanath",
+          "character_name": "Eshwari Amma",
+          "role": "Supporting Actress",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/9/91/Vani_Viswanath_Profile.jpg"
+        },
+        {
+          "name": "Arjun Ashokan",
+          "character_name": "Deepak",
+          "role": "Parallel Lead",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/4/4a/Arjun_Ashokan_Profile.jpg"
+        },
+        {
+          "name": "Murali Gopy",
+          "character_name": "Devanarayanan",
+          "role": "Antagonist",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Murali_Gopy_Profile.jpg"
+        }
+      ],
+      "crew": {
+        "director": {
+          "name": "Abhilash S. Kumar",
+          "photo_url": "https://upload.wikimedia.org/wikipedia/commons/2/22/Abhilash_S_Kumar.jpg"
+        },
+        "producers": [
+          {
+            "name": "Joju George",
+            "company": "Appu Pathu Pappu Production House"
+          }
+        ],
+        "screenplay": ["Murali Gopy"],
+        "music_directors": ["Sam C. S."],
+        "cinematographer": "Shaji Kumar",
+        "editor": "Vivek Harshan"
+      },
+      "show_details": {
+        "formats_available": ["2D", "Dolby Atmos"],
+        "languages_available": ["Malayalam"]
+      }
+    }
+  ]
+}

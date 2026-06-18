@@ -1,0 +1,5 @@
+import type { ReactNode } from 'react';
+
+export default function PublicShell({ children }: { children: ReactNode }) {
+  return <section className="grid gap-6">{children}</section>;
+}
