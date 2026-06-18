@@ -3211,6 +3211,12 @@ p { color: var(--muted); line-height: 1.6; }
 .checker-camera-placeholder { position: relative; z-index: 1; display: grid; justify-items: center; gap: 0.65rem; color: #708094; text-align: center; pointer-events: none; }
 .checker-camera video { width: 100% !important; min-height: 360px; object-fit: cover; }
 .checker-camera-button { width: 100%; margin-top: 0.75rem; color: #f8fafc; background: #1b2938; }
+.checker-file-input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+.checker-image-button { display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem; width: 100%; min-height: 48px; margin-top: 0.55rem; border: 1px solid rgba(245,184,46,0.4); border-radius: 6px; color: #f5d78c; background: #101923; font-weight: 850; cursor: pointer; }
+.checker-image-button:disabled { opacity: 0.55; cursor: wait; }
+.checker-image-preview { position: relative; display: grid; place-items: center; max-height: 190px; margin-top: 0.6rem; overflow: hidden; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; background: #05090e; }
+.checker-image-preview img { width: 100%; max-height: 190px; object-fit: contain; }
+.checker-image-preview span { position: absolute; right: 0.5rem; bottom: 0.5rem; border-radius: 4px; padding: 0.25rem 0.45rem; color: #fff; background: rgba(0,0,0,0.75); font-size: 0.7rem; }
 .checker-manual-entry { display: grid; gap: 0.55rem; margin-top: 1.25rem; }
 .checker-manual-entry > span { color: #8392a5; font-size: 0.78rem; text-align: center; }
 .checker-manual-entry > div { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
@@ -3318,6 +3324,10 @@ body:has(.checker-login-page) .page-frame { width: 100%; max-width: none; paddin
   .checker-camera,
   .checker-camera video { min-height: 300px; }
   .checker-result-panel { min-height: 480px; }
+  .checker-result-panel.has-result { position: fixed; inset: 0; z-index: 110; min-height: 100dvh; overflow-y: auto; overscroll-behavior: contain; padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom)); background: rgba(3,8,14,0.98); }
+  .checker-result-panel.has-result .checker-result-empty,
+  .checker-result-panel.has-result .checker-result-card { align-self: center; }
+  .checker-result-panel.has-result .checker-result-card { width: 100%; min-height: calc(100dvh - 2rem); align-content: center; border-radius: 8px; }
   .checker-result-card { padding: 1.2rem; }
   .checker-result-card h2 { font-size: 2.5rem; }
   .checker-seat-callout { grid-template-columns: 1fr; }

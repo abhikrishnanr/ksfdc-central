@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarDays, Camera, Check, CircleAlert, LayoutGrid, LogOut, ScanLine, Sheet, StopCircle, TicketCheck, Volume2 } from 'lucide-react';
+import { CalendarDays, Camera, Check, CircleAlert, ImageUp, LayoutGrid, LogOut, ScanLine, Sheet, StopCircle, TicketCheck, Volume2 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { BookingShowDetail } from '../../lib/central-data';
@@ -10,6 +10,7 @@ type Theatre = { id: string; code: string; name: string; city: string };
 type Show = { id: string; movieId: string; movieTitle: string; theatreId: string; theatreName: string; screenId: string; screenName: string; showTime: string; status: string };
 type Ticket = { bookingId: string; showId: string; theatreId: string; theatreName: string; movieTitle: string; screenName: string; showTime: string; status: string; channel: string; totalAmount: number; groups: { zone: string; seats: string[] }[] };
 type ValidationResult = { success: boolean; outcome: 'VALID' | 'ALREADY_ADMITTED' | 'INVALID'; reason?: string | null; message: string; ticket?: Ticket; attendanceMarked?: boolean; admittedAt?: string };
+let statusAudioContext: AudioContext | null = null;
 
 function localDateValue() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -19,7 +20,37 @@ function formatShowTime(value: string) {
   return new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' }).format(new Date(value));
 }
 
+function prepareStatusAudio() {
+  try {
+    statusAudioContext ??= new AudioContext();
+    if (statusAudioContext.state === 'suspended') void statusAudioContext.resume();
+  } catch { /* Audio cues are optional on restricted browsers. */ }
+}
+
+function playStatusTone(outcome: ValidationResult['outcome']) {
+  try {
+    prepareStatusAudio();
+    const context = statusAudioContext;
+    if (!context) return;
+    const frequencies = outcome === 'VALID' ? [523, 659, 784] : outcome === 'ALREADY_ADMITTED' ? [440, 440] : [330, 247];
+    frequencies.forEach((frequency, index) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const start = context.currentTime + index * 0.13;
+      oscillator.type = outcome === 'VALID' ? 'sine' : 'triangle';
+      oscillator.frequency.setValueAtTime(frequency, start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.13, start + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.16);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start(start);
+      oscillator.stop(start + 0.17);
+    });
+  } catch { /* Audio cues are optional on restricted browsers. */ }
+}
+
 function announce(result: ValidationResult) {
+  playStatusTone(result.outcome);
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
   let text = 'Invalid ticket.';
@@ -30,7 +61,13 @@ function announce(result: ValidationResult) {
     text = `Ticket already checked. ${result.ticket.groups.map((group) => `${group.zone}, seats ${group.seats.join(', ')}`).join('. ')}.`;
   } else if (result.reason === 'OTHER_SHOW' || result.reason === 'OTHER_THEATRE') text = result.message;
   const speech = new SpeechSynthesisUtterance(text);
-  speech.rate = 0.9;
+  const voices = window.speechSynthesis.getVoices();
+  speech.voice = voices.find((voice) => voice.lang.toLowerCase() === 'en-in')
+    ?? voices.find((voice) => voice.lang.toLowerCase().endsWith('-in'))
+    ?? voices.find((voice) => /india/i.test(`${voice.name} ${voice.voiceURI}`))
+    ?? null;
+  speech.lang = speech.voice?.lang ?? 'en-IN';
+  speech.rate = 0.88;
   speech.pitch = 1;
   window.speechSynthesis.speak(speech);
 }
@@ -45,12 +82,15 @@ export default function TicketCheckerConsole({ session, theatres }: { session: {
   const [started, setStarted] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState('');
+  const [imagePreview, setImagePreview] = useState('');
+  const [imageScanning, setImageScanning] = useState(false);
   const [manualValue, setManualValue] = useState('');
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [validating, setValidating] = useState(false);
   const [layout, setLayout] = useState<{ show: BookingShowDetail; ticketSeats: string[] } | null>(null);
   const scannerRef = useRef<{ start: (...args: unknown[]) => Promise<unknown>; stop: () => Promise<unknown>; clear: () => void; isScanning?: boolean } | null>(null);
   const cameraStartingRef = useRef(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const processingRef = useRef(false);
   const selectedShow = shows.find((show) => show.id === showId) ?? null;
   const movies = useMemo(() => Array.from(new Map(shows.map((show) => [show.movieId, { id: show.movieId, title: show.movieTitle }])).values()), [shows]);
@@ -86,6 +126,7 @@ export default function TicketCheckerConsole({ session, theatres }: { session: {
 
   const validateTicket = useCallback(async (rawValue: string) => {
     if (!theatreId || !showId || processingRef.current) return;
+    prepareStatusAudio();
     processingRef.current = true;
     setValidating(true);
     setResult(null);
@@ -111,6 +152,7 @@ export default function TicketCheckerConsole({ session, theatres }: { session: {
 
   const startCamera = useCallback(async () => {
     if (cameraStartingRef.current || cameraActive) return;
+    prepareStatusAudio();
     cameraStartingRef.current = true;
     setCameraError('');
     setResult(null);
@@ -147,6 +189,34 @@ export default function TicketCheckerConsole({ session, theatres }: { session: {
   }, [cameraActive, stopCamera, validateTicket]);
 
   useEffect(() => () => { void stopCamera(); }, [stopCamera]);
+
+  useEffect(() => () => { if (imagePreview) URL.revokeObjectURL(imagePreview); }, [imagePreview]);
+
+  async function scanTicketImage(file: File | undefined) {
+    if (!file || imageScanning || processingRef.current) return;
+    prepareStatusAudio();
+    await stopCamera();
+    setCameraError('');
+    setResult(null);
+    setImageScanning(true);
+    setImagePreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return URL.createObjectURL(file);
+    });
+    let scanner: { scanFile: (imageFile: File, showImage?: boolean) => Promise<string>; clear: () => void } | null = null;
+    try {
+      const { Html5Qrcode } = await import('html5-qrcode');
+      scanner = new Html5Qrcode('ticket-checker-camera');
+      const decodedText = await scanner.scanFile(file, true);
+      await validateTicket(decodedText);
+    } catch {
+      setCameraError('No readable ticket QR was found in that image. Try a sharper image with the full QR visible.');
+    } finally {
+      try { scanner?.clear(); } catch { /* File scanner may already be clear. */ }
+      setImageScanning(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
+  }
 
   async function viewSeats() {
     if (!result?.ticket) return;
@@ -199,9 +269,12 @@ export default function TicketCheckerConsole({ session, theatres }: { session: {
               </div>
               {cameraError ? <div className="checker-inline-error">{cameraError}</div> : null}
               <button className="checker-camera-button" type="button" onClick={cameraActive ? stopCamera : startCamera}>{cameraActive ? <><StopCircle /> Stop camera</> : <><Camera /> Open camera scanner</>}</button>
+              <input ref={imageInputRef} className="checker-file-input" type="file" accept="image/*" onChange={(event) => void scanTicketImage(event.target.files?.[0])} />
+              <button className="checker-image-button" type="button" disabled={imageScanning || validating} onClick={() => imageInputRef.current?.click()}><ImageUp /> {imageScanning ? 'Reading ticket image…' : 'Browse ticket image'}</button>
+              {imagePreview ? <div className="checker-image-preview"><img src={imagePreview} alt="Selected ticket image" /><span>Selected ticket image</span></div> : null}
               <div className="checker-manual-entry"><span>or enter booking ID / QR text</span><div><input value={manualValue} onChange={(event) => setManualValue(event.target.value)} placeholder="BOOKING_… or LOCAL-…" onKeyDown={(event) => { if (event.key === 'Enter') void validateTicket(manualValue); }} /><button type="button" disabled={!manualValue.trim() || validating} onClick={() => void validateTicket(manualValue)}>Check</button></div></div>
             </section>
-            <section className="checker-result-panel" aria-live="assertive">
+            <section className={`checker-result-panel${validating || result ? ' has-result' : ''}`} aria-live="assertive">
               {validating ? <div className="checker-result-empty is-loading"><ScanLine size={58} /><h2>Checking ticket…</h2><p>Confirming booking and attendance.</p></div> : result ? (
                 <div className={`checker-result-card is-${result.outcome.toLowerCase()}`}>
                   <div className="checker-result-icon">{result.outcome === 'VALID' ? <Check /> : <CircleAlert />}</div>
