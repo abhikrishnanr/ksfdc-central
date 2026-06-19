@@ -1,4 +1,4 @@
-import { ResultSetHeader, RowDataPacket } from 'mysql2';
+import { RowDataPacket } from 'mysql2';
 import { getCentralDbPool } from './db';
 import { ensureTicketCheckerTables, type TicketCheckerSession } from './ticket-checker-auth';
 import { ticketVerificationTokenMatches } from './ticket-verification';
@@ -137,8 +137,37 @@ export async function validateAndAdmitTicket(input: { rawValue: string; theatreI
       const message = reason === 'OTHER_THEATRE' ? `Valid ticket, but for ${ticket.theatreName}.` : reason === 'OTHER_SHOW' ? `Valid ticket, but for ${ticket.movieTitle} at ${formatTheatreDateTime(ticket.showTime)}.` : 'This ticket cannot be admitted.';
       return { success: false, outcome: 'INVALID', reason, message, ticket };
     }
-    const [insert] = await connection.query<ResultSetHeader>(
-      `INSERT IGNORE INTO ticket_attendance (booking_id, show_id, theatre_id, checker_user_id, admission_source)
+    const [[existingAttendance]] = await connection.query<RowDataPacket[]>(
+      `SELECT a.admitted_at AS admittedAt, a.show_id AS admittedShowId, u.display_name AS checkerName
+       FROM ticket_attendance a
+       LEFT JOIN ticket_checker_users u ON u.id = a.checker_user_id
+       WHERE a.booking_id = ? LIMIT 1 FOR UPDATE`,
+      [ticket.bookingId]
+    );
+    if (existingAttendance) {
+      await logScan(connection, {
+        checkerUserId: input.session.userId,
+        bookingId: ticket.bookingId,
+        theatreId: input.theatreId,
+        showId: input.showId,
+        result: 'ALREADY_ADMITTED',
+        reason: 'ALREADY_ADMITTED',
+        metadata: { source: parsed.source, admittedAt: existingAttendance.admittedAt, checkerName: existingAttendance.checkerName }
+      });
+      await connection.commit();
+      return {
+        success: true,
+        outcome: 'ALREADY_ADMITTED',
+        reason: 'ALREADY_ADMITTED',
+        message: `Ticket was already checked at ${formatTheatreDateTime(theatreDateTimeIso(existingAttendance.admittedAt))}.`,
+        ticket,
+        attendanceMarked: false,
+        admittedAt: theatreDateTimeIso(existingAttendance.admittedAt),
+        checkerName: existingAttendance.checkerName ? String(existingAttendance.checkerName) : null
+      };
+    }
+    await connection.query(
+      `INSERT INTO ticket_attendance (booking_id, show_id, theatre_id, checker_user_id, admission_source)
        VALUES (?, ?, ?, ?, ?)`,
       [ticket.bookingId, ticket.showId, ticket.theatreId, input.session.userId, parsed.source]
     );
@@ -146,13 +175,12 @@ export async function validateAndAdmitTicket(input: { rawValue: string; theatreI
       'SELECT admitted_at AS admittedAt FROM ticket_attendance WHERE booking_id = ? LIMIT 1',
       [ticket.bookingId]
     );
-    const isNew = insert.affectedRows === 1;
-    await logScan(connection, { checkerUserId: input.session.userId, bookingId: ticket.bookingId, theatreId: input.theatreId, showId: input.showId, result: isNew ? 'ADMITTED' : 'ALREADY_ADMITTED', metadata: { source: parsed.source } });
+    await logScan(connection, { checkerUserId: input.session.userId, bookingId: ticket.bookingId, theatreId: input.theatreId, showId: input.showId, result: 'ADMITTED', metadata: { source: parsed.source } });
     await connection.commit();
     return {
-      success: true, outcome: isNew ? 'VALID' : 'ALREADY_ADMITTED', reason: isNew ? null : 'ALREADY_ADMITTED',
-      message: isNew ? 'Ticket valid. Attendance marked.' : 'Ticket was already admitted.', ticket,
-      attendanceMarked: isNew, admittedAt: new Date(attendance.admittedAt).toISOString()
+      success: true, outcome: 'VALID', reason: null,
+      message: 'Ticket valid. Attendance marked.', ticket,
+      attendanceMarked: true, admittedAt: theatreDateTimeIso(attendance.admittedAt)
     };
   } catch (error) {
     await connection.rollback();

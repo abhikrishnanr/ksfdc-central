@@ -9,7 +9,7 @@ import TicketSeatLayoutModal from './TicketSeatLayoutModal';
 type Theatre = { id: string; code: string; name: string; city: string };
 type Show = { id: string; movieId: string; movieTitle: string; theatreId: string; theatreName: string; screenId: string; screenName: string; showTime: string; status: string };
 type Ticket = { bookingId: string; showId: string; theatreId: string; theatreName: string; movieTitle: string; screenName: string; showTime: string; status: string; channel: string; totalAmount: number; groups: { zone: string; seats: string[] }[] };
-type ValidationResult = { success: boolean; outcome: 'VALID' | 'ALREADY_ADMITTED' | 'INVALID'; reason?: string | null; message: string; ticket?: Ticket; attendanceMarked?: boolean; admittedAt?: string };
+type ValidationResult = { success: boolean; outcome: 'VALID' | 'ALREADY_ADMITTED' | 'INVALID'; reason?: string | null; message: string; ticket?: Ticket; attendanceMarked?: boolean; admittedAt?: string; checkerName?: string | null };
 let statusAudioContext: AudioContext | null = null;
 
 function localDateValue() {
@@ -59,14 +59,18 @@ function announce(result: ValidationResult) {
     text = `Ticket valid. ${seats}.`;
   } else if (result.outcome === 'ALREADY_ADMITTED' && result.ticket) {
     text = `Ticket already checked. ${result.ticket.groups.map((group) => `${group.zone}, seats ${group.seats.join(', ')}`).join('. ')}.`;
-  } else if (result.reason === 'OTHER_SHOW' || result.reason === 'OTHER_THEATRE') text = result.message;
+  } else if (result.reason === 'OTHER_SHOW') {
+    text = `Wrong show. This ticket is for ${result.ticket?.movieTitle ?? 'another show'}, ${result.message}`;
+  } else if (result.reason === 'OTHER_THEATRE') {
+    text = `Wrong theatre. ${result.message}`;
+  }
   const speech = new SpeechSynthesisUtterance(text);
   const voices = window.speechSynthesis.getVoices();
   speech.voice = voices.find((voice) => voice.lang.toLowerCase() === 'en-in')
-    ?? voices.find((voice) => voice.lang.toLowerCase().endsWith('-in'))
-    ?? voices.find((voice) => /india/i.test(`${voice.name} ${voice.voiceURI}`))
+    ?? voices.find((voice) => voice.lang.toLowerCase().startsWith('en-') && /india|english/i.test(`${voice.name} ${voice.voiceURI}`))
+    ?? voices.find((voice) => voice.lang.toLowerCase().startsWith('en-'))
     ?? null;
-  speech.lang = speech.voice?.lang ?? 'en-IN';
+  speech.lang = speech.voice?.lang.toLowerCase().startsWith('en-') ? speech.voice.lang : 'en-IN';
   speech.rate = 0.88;
   speech.pitch = 1;
   window.speechSynthesis.speak(speech);
@@ -95,6 +99,15 @@ export default function TicketCheckerConsole({ session, theatres }: { session: {
   const selectedShow = shows.find((show) => show.id === showId) ?? null;
   const movies = useMemo(() => Array.from(new Map(shows.map((show) => [show.movieId, { id: show.movieId, title: show.movieTitle }])).values()), [shows]);
   const movieShows = shows.filter((show) => show.movieId === movieId);
+  const resultHeading = result?.outcome === 'VALID'
+    ? 'VALID TICKET'
+    : result?.outcome === 'ALREADY_ADMITTED'
+      ? 'ALREADY CHECKED'
+      : result?.reason === 'OTHER_SHOW'
+        ? 'WRONG SHOW'
+        : result?.reason === 'OTHER_THEATRE'
+          ? 'WRONG THEATRE'
+          : 'INVALID TICKET';
 
   useEffect(() => {
     if (!theatreId || !date) return;
@@ -278,8 +291,8 @@ export default function TicketCheckerConsole({ session, theatres }: { session: {
               {validating ? <div className="checker-result-empty is-loading"><ScanLine size={58} /><h2>Checking ticket…</h2><p>Confirming booking and attendance.</p></div> : result ? (
                 <div className={`checker-result-card is-${result.outcome.toLowerCase()}`}>
                   <div className="checker-result-icon">{result.outcome === 'VALID' ? <Check /> : <CircleAlert />}</div>
-                  <p className="eyebrow">{result.outcome === 'VALID' ? 'Admission approved' : result.outcome === 'ALREADY_ADMITTED' ? 'Duplicate scan' : 'Admission stopped'}</p>
-                  <h2>{result.outcome === 'VALID' ? 'VALID TICKET' : result.outcome === 'ALREADY_ADMITTED' ? 'ALREADY CHECKED' : 'INVALID TICKET'}</h2>
+                  <p className="eyebrow">{result.outcome === 'VALID' ? 'Admission approved' : result.outcome === 'ALREADY_ADMITTED' ? 'Duplicate scan' : result.reason === 'OTHER_SHOW' || result.reason === 'OTHER_THEATRE' ? 'Ticket belongs elsewhere' : 'Admission stopped'}</p>
+                  <h2>{resultHeading}</h2>
                   <p className="checker-result-message">{result.message}</p>
                   {result.ticket ? <>
                     <div className="checker-ticket-context"><strong>{result.ticket.movieTitle}</strong><span>{result.ticket.theatreName}</span><span>{result.ticket.screenName} · {new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(result.ticket.showTime))}</span><small>{result.ticket.bookingId}</small></div>
