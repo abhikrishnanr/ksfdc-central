@@ -39,7 +39,7 @@ export default async function ProfileTicketDetailPage({ params }: { params: Prom
 
   const [[booking]] = await getCentralDbPool().query<RowDataPacket[]>(
     `SELECT b.id, b.show_id AS showId, s.theatre_id AS theatreId, b.status, b.total_amount AS totalAmount, b.created_at AS bookedAt,
-            m.title AS movieTitle, m.poster_url AS moviePosterUrl, t.name AS theatreName, sc.name AS screenName, s.show_time AS showTime,
+            m.id AS movieId, m.title AS movieTitle, m.poster_url AS moviePosterUrl, t.name AS theatreName, sc.name AS screenName, s.show_time AS showTime,
             p.payment_mode AS paymentMode, p.counter_code AS counterCode
      FROM central_bookings b
      JOIN shows s ON s.id = b.show_id
@@ -80,6 +80,7 @@ export default async function ProfileTicketDetailPage({ params }: { params: Prom
         theatreName: String(booking.theatreName),
         screenName: String(booking.screenName),
         movieTitle: String(booking.movieTitle),
+        movieId: String(booking.movieId),
         moviePosterUrl: booking.moviePosterUrl ? String(booking.moviePosterUrl) : null,
         showTime: new Date(booking.showTime).toISOString(),
         issuedAt: new Date(booking.bookedAt).toISOString(),

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
-import { LayoutGrid } from 'lucide-react';
+import { LayoutGrid, ScanLine, X } from 'lucide-react';
 import type { BookingShowDetail } from '../../lib/central-data';
 import TicketSeatLayoutModal from './TicketSeatLayoutModal';
 
@@ -20,6 +20,7 @@ export type ShareableTicket = {
   theatreName: string;
   screenName: string;
   movieTitle: string;
+  movieId: string;
   moviePosterUrl: string | null;
   showTime: string;
   issuedAt: string;
@@ -44,9 +45,26 @@ function statusLabel(value: string) {
   return value === 'CONFIRMED' ? 'Confirmed' : value.replaceAll('_', ' ').toLowerCase().replace(/^\w/, (letter) => letter.toUpperCase());
 }
 
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement | null>((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = src;
+  });
+}
+
+function drawCover(ctx: CanvasRenderingContext2D, image: HTMLImageElement, x: number, y: number, width: number, height: number) {
+  const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
+  const renderedWidth = image.naturalWidth * scale;
+  const renderedHeight = image.naturalHeight * scale;
+  ctx.drawImage(image, x - (renderedWidth - width) / 2, y - (renderedHeight - height) / 2, renderedWidth, renderedHeight);
+}
+
 export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: ShareableTicket; seatLayout?: BookingShowDetail | null }) {
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [showSeatLayout, setShowSeatLayout] = useState(false);
+  const [showQr, setShowQr] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const qrPayload = useMemo(() => JSON.stringify({
     bookingId: ticket.bookingId,
@@ -60,8 +78,20 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
   const seatCount = ticketSeats.length;
 
   useEffect(() => {
-    QRCode.toDataURL(qrPayload, { margin: 1, width: 240 }).then(setQrDataUrl).catch(() => setQrDataUrl(''));
+    QRCode.toDataURL(qrPayload, { margin: 1, width: 800, errorCorrectionLevel: 'M' }).then(setQrDataUrl).catch(() => setQrDataUrl(''));
   }, [qrPayload]);
+
+  useEffect(() => {
+    if (!showQr) return;
+    const close = (event: KeyboardEvent) => event.key === 'Escape' && setShowQr(false);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', close);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', close);
+    };
+  }, [showQr]);
 
   async function downloadTicket() {
     const canvas = document.createElement('canvas');
@@ -71,27 +101,43 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
     if (!ctx) return;
     ctx.fillStyle = '#07090d';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const poster = ticket.moviePosterUrl
+      ? await loadImage(`/api/public/movies/${encodeURIComponent(ticket.movieId)}/poster`)
+      : null;
+    if (poster) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(28, 28, canvas.width - 56, 530, 18);
+      ctx.clip();
+      drawCover(ctx, poster, 28, 28, canvas.width - 56, 530);
+      const posterShade = ctx.createLinearGradient(0, 100, 0, 558);
+      posterShade.addColorStop(0, 'rgba(7,9,13,0.08)');
+      posterShade.addColorStop(1, 'rgba(7,9,13,0.96)');
+      ctx.fillStyle = posterShade;
+      ctx.fillRect(28, 28, canvas.width - 56, 530);
+      ctx.restore();
+    }
     const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    gradient.addColorStop(0, '#111827');
+    gradient.addColorStop(0, poster ? 'rgba(17,24,39,0)' : '#111827');
     gradient.addColorStop(0.55, '#07111f');
     gradient.addColorStop(1, '#0f172a');
     ctx.fillStyle = gradient;
-    ctx.fillRect(28, 28, canvas.width - 56, canvas.height - 56);
+    ctx.fillRect(28, poster ? 470 : 28, canvas.width - 56, poster ? canvas.height - 498 : canvas.height - 56);
     ctx.fillStyle = '#f8fafc';
     ctx.font = '700 42px Arial';
-    ctx.fillText(ticket.movieTitle, 48, 88, 780);
+    ctx.fillText(ticket.movieTitle, 48, poster ? 420 : 88, 780);
     ctx.font = '400 26px Arial';
-    ctx.fillText(`${ticket.theatreName} - ${ticket.screenName}`, 48, 132, 780);
-    ctx.fillText(formatTime(ticket.showTime), 48, 170, 780);
+    ctx.fillText(`${ticket.theatreName} - ${ticket.screenName}`, 48, poster ? 462 : 132, 780);
+    ctx.fillText(formatTime(ticket.showTime), 48, poster ? 500 : 170, 780);
     ctx.fillStyle = '#34d399';
     ctx.font = '700 34px Arial';
-    ctx.fillText(statusLabel(ticket.status), 48, 230);
+    ctx.fillText(statusLabel(ticket.status), 48, poster ? 565 : 230);
     ctx.fillStyle = '#f8fafc';
     ctx.font = '700 28px Arial';
-    ctx.fillText(`Ticket ${ticket.ticketNumber}`, 48, 290, 780);
+    ctx.fillText(`Ticket ${ticket.ticketNumber}`, 48, poster ? 625 : 290, 780);
     ctx.font = '400 24px Arial';
-    ctx.fillText(`Booking ${ticket.bookingId}`, 48, 330, 780);
-    let y = 400;
+    ctx.fillText(`Booking ${ticket.bookingId}`, 48, poster ? 665 : 330, 780);
+    let y = poster ? 735 : 400;
     for (const group of ticket.groups) {
       ctx.font = '700 28px Arial';
       ctx.fillText(group.zone, 48, y);
@@ -161,7 +207,7 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
             ))}
           </div>
           <div className="ticket-qr-row">
-            {qrDataUrl ? <img src={qrDataUrl} alt="Ticket verification QR code" /> : <span className="qr-placeholder">QR</span>}
+            {qrDataUrl ? <button className="ticket-qr-button" type="button" onClick={() => setShowQr(true)} aria-label="Open ticket QR code full screen"><img src={qrDataUrl} alt="Ticket verification QR code" /><span><ScanLine size={16} /> Enlarge to scan</span></button> : <span className="qr-placeholder">QR</span>}
             <div>
               <span>Booking ID</span>
               <strong>{ticket.bookingId}</strong>
@@ -200,7 +246,7 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
           <small>SCAN TO VERIFY</small><strong>{ticket.bookingId}</strong>
         </section>
         <footer className="thermal-ticket-footer">
-          <p>{ticket.counterCode ? `Counter ${ticket.counterCode} · ` : ''}Ticket {ticket.ticketNumber}</p>
+          <p>{ticket.counterCode ? `Counter ${ticket.counterCode} - ` : ''}Ticket {ticket.ticketNumber}</p>
           <p>Issued {formatTime(ticket.issuedAt)}</p><strong>THANK YOU. ENJOY THE SHOW!</strong>
         </footer>
       </article>
@@ -211,6 +257,18 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
         <button type="button" className="action-button" onClick={() => window.print()}>Print</button>
       </div>
       {showSeatLayout && seatLayout ? <TicketSeatLayoutModal show={seatLayout} ticketSeats={ticketSeats} onClose={() => setShowSeatLayout(false)} /> : null}
+      {showQr && qrDataUrl ? (
+        <div className="ticket-qr-modal" role="dialog" aria-modal="true" aria-label="Ticket QR code" onMouseDown={(event) => event.target === event.currentTarget && setShowQr(false)}>
+          <div className="ticket-qr-modal-card">
+            <button className="ticket-qr-close" type="button" onClick={() => setShowQr(false)} aria-label="Close QR code"><X /></button>
+            <div className="ticket-qr-modal-heading"><ScanLine /><span>Present for ticket checking</span></div>
+            <img src={qrDataUrl} alt="Full-screen ticket verification QR code" />
+            <h2>{ticket.movieTitle}</h2>
+            <p>{ticket.ticketNumber}</p>
+            <strong>{ticket.groups.map((group) => `${group.zone}: ${group.seats.join(', ')}`).join(' | ')}</strong>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -1,19 +1,11 @@
 export const dynamic = 'force-dynamic';
 
-import Link from 'next/link';
 import { RowDataPacket } from 'mysql2';
-import { EmptyState, PageHeader, PremiumCard, StatusBadge } from '../../../components/premium-ui';
+import { PageHeader } from '../../../components/premium-ui';
+import TicketHistoryTabs, { type TicketHistoryItem } from '../../../components/template/TicketHistoryTabs';
 import { getCentralDbPool } from '../../../lib/db';
 import { getPublicSession } from '../../../lib/public-auth';
 import PublicEmailLoginPanel from '../PublicEmailLoginPanel';
-
-function formatTime(value: unknown) {
-  return value ? new Date(value as string | Date).toLocaleString('en-IN') : 'Not recorded';
-}
-
-function money(value: unknown) {
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(value ?? 0));
-}
 
 export default async function ProfileTicketsPage() {
   const session = await getPublicSession();
@@ -29,7 +21,7 @@ export default async function ProfileTicketsPage() {
   const [tickets] = await getCentralDbPool().query<RowDataPacket[]>(
     `SELECT b.id, b.status, b.total_amount AS totalAmount, b.created_at AS bookedAt,
             m.title AS movieTitle, m.poster_url AS moviePosterUrl, t.name AS theatreName, sc.name AS screenName, s.show_time AS showTime,
-            COUNT(i.seat_id) AS seatCount
+            COUNT(DISTINCT i.seat_id) AS seatCount
      FROM central_bookings b
      JOIN shows s ON s.id = b.show_id
      JOIN movies m ON m.id = s.movie_id
@@ -41,34 +33,23 @@ export default async function ProfileTicketsPage() {
      ORDER BY s.show_time DESC, b.created_at DESC`,
     [session.userId, session.email]
   );
+  const history = tickets.map((ticket) => ({
+    id: String(ticket.id),
+    status: String(ticket.status),
+    totalAmount: Number(ticket.totalAmount ?? 0),
+    bookedAt: new Date(ticket.bookedAt).toISOString(),
+    movieTitle: String(ticket.movieTitle),
+    moviePosterUrl: ticket.moviePosterUrl ? String(ticket.moviePosterUrl) : null,
+    theatreName: String(ticket.theatreName),
+    screenName: String(ticket.screenName),
+    showTime: new Date(ticket.showTime).toISOString(),
+    seatCount: Number(ticket.seatCount ?? 0)
+  })) satisfies TicketHistoryItem[];
 
   return (
-    <main className="grid" style={{ gap: 24 }}>
-      <PageHeader eyebrow="My tickets" title="Booked tickets" description={`Tickets linked to ${session.email}.`} />
-      {!tickets.length ? <EmptyState title="No tickets yet"><p>Your confirmed tickets will appear here after payment.</p></EmptyState> : null}
-      <div className="grid">
-        {tickets.map((ticket) => (
-          <PremiumCard key={String(ticket.id)}>
-            <div className="meta-row" style={{ justifyContent: 'space-between' }}>
-              <div
-                className="ticket-list-poster"
-                style={ticket.moviePosterUrl ? { backgroundImage: `url("${String(ticket.moviePosterUrl)}")` } : undefined}
-                aria-label={`${String(ticket.movieTitle)} poster`}
-              />
-              <div>
-                <p className="eyebrow">{formatTime(ticket.showTime)}</p>
-                <h2>{String(ticket.movieTitle)}</h2>
-                <p>{String(ticket.theatreName)} - {String(ticket.screenName)} - {Number(ticket.seatCount)} ticket(s)</p>
-              </div>
-              <StatusBadge tone={String(ticket.status) === 'CONFIRMED' ? 'good' : 'warn'}>{String(ticket.status)}</StatusBadge>
-            </div>
-            <div className="meta-row" style={{ marginTop: 16 }}>
-              <StatusBadge tone="violet">{money(ticket.totalAmount)}</StatusBadge>
-              <Link className="action-button primary" href={`/profile/tickets/${String(ticket.id)}`}>Open ticket</Link>
-            </div>
-          </PremiumCard>
-        ))}
-      </div>
+    <main className="ticket-history-page">
+      <PageHeader eyebrow="My tickets" title="Your cinema moments" description={`Upcoming visits and past bookings for ${session.email}.`} />
+      <TicketHistoryTabs tickets={history} referenceTime={new Date().toISOString()} />
     </main>
   );
 }

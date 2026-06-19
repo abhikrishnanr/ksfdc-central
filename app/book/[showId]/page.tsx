@@ -6,6 +6,8 @@ import { ErrorState, PageHeader, StatusBadge } from '../../../components/premium
 import { formatPublicError, getPublicShowStatus } from '../../../lib/public-copy';
 import BookingSeatPicker from './BookingSeatPicker';
 import ShowtimeStrip from '../../../components/template/ShowtimeStrip';
+import { MoonStar } from 'lucide-react';
+import { isMidnightShow } from '../../../lib/show-time';
 
 function formatTime(value: string) {
   return new Intl.DateTimeFormat('en-IN', { timeStyle: 'short', dateStyle: 'medium' }).format(new Date(value));
@@ -48,6 +50,13 @@ export default async function CentralBookingPage({ params }: { params: Promise<{
         </div>
         <StatusBadge tone={publicStatus.tone}>{publicStatus.label}</StatusBadge>
       </section>
+
+      {isMidnightShow(show.showTime) ? (
+        <section className="midnight-show-banner" role="note">
+          <MoonStar />
+          <div><strong>11:59 PM MIDNIGHT SHOW</strong><span>Starts late tonight and continues after midnight. Please confirm the show date before choosing seats.</span></div>
+        </section>
+      ) : null}
 
       {show.bookingEnabled === false ? (
         <section className="booking-unavailable-panel" role="status" aria-live="polite">

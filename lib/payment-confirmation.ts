@@ -96,7 +96,8 @@ export async function confirmCentralHoldAfterPayment(input: PaymentConfirmationI
       showId: String(hold.showId),
       theatreId: String(hold.theatreId),
       authorityMode: hold.authorityMode,
-      status: hold.showStatus
+      status: hold.showStatus,
+      allowExistingHoldAfterCutoff: true
     });
     const authorityMode = normalizeAuthorityMode(decision?.authorityMode ?? hold.authorityMode);
     if (authorityMode === 'RETURNING_TO_CENTRAL') {
@@ -209,7 +210,8 @@ export async function confirmForwardedLocalHoldAfterPayment(input: PaymentConfir
     showId: String(hold.showId),
     theatreId: String(hold.theatreId),
     authorityMode: hold.authorityMode,
-    status: hold.showStatus
+    status: hold.showStatus,
+    allowExistingHoldAfterCutoff: true
   });
   const authorityMode = normalizeAuthorityMode(decision?.authorityMode ?? hold.authorityMode);
   if (authorityMode === 'RETURNING_TO_CENTRAL') return returningToCentralResult();

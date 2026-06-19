@@ -129,7 +129,8 @@ export async function POST(request: NextRequest) {
     showId: String(hold.showId),
     theatreId: String(hold.theatreId),
     authorityMode: hold.authorityMode,
-    status: hold.showStatus
+    status: hold.showStatus,
+    allowExistingHoldAfterCutoff: true
   });
   const authorityMode = normalizeAuthorityMode(decision?.authorityMode ?? hold.authorityMode);
 

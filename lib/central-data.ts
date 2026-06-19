@@ -77,6 +77,7 @@ export interface CentralMovieShowtime {
   availableSeats?: number;
   format?: string | null;
   bookingEnabled?: boolean;
+  reason?: OnlineBookingUnavailableReason;
 }
 
 export interface CentralMovieDetail extends CentralMovieSummary {
@@ -420,9 +421,10 @@ export async function getPublicShowtimes(options: { dayOffset?: number; city?: s
         status: show.status
       });
       if (!decision) return { ...show, bookingEnabled: false, reason: 'UNKNOWN' as const };
-      const reason = decision.publicBookingAllowed ? undefined : getOnlineBookingUnavailableReason({
+      const reason = decision.publicBookingAllowed ? undefined : decision.unavailableReason ?? getOnlineBookingUnavailableReason({
         authorityMode: decision.authorityMode,
         status: show.status,
+        showTime: show.showTime,
         localReachable: decision.localReachable
       });
       return {
@@ -966,7 +968,7 @@ export async function getAuthorityAwareBookingShow(showId: string) {
 
     if (authorityMode === 'LOCAL_AUTHORITY_ONLINE') {
       if (!decision?.publicBookingAllowed) {
-        return withBookingState(show, false, 'LOCAL_AUTHORITY_UNREACHABLE');
+        return withBookingState(show, false, decision?.unavailableReason ?? 'LOCAL_AUTHORITY_UNREACHABLE');
       }
 
       const localShow = await fetchLiveLocalSeatStatus(showId);
@@ -991,10 +993,12 @@ export async function getAuthorityAwareBookingShow(showId: string) {
         const reason = canShowBeBookedOnline({
           authorityMode: publicLocalShow.authorityMode,
           status: publicLocalShow.status,
+          showTime: publicLocalShow.showTime,
           localReachable: true
         }) ? undefined : getOnlineBookingUnavailableReason({
           authorityMode: publicLocalShow.authorityMode,
           status: publicLocalShow.status,
+          showTime: publicLocalShow.showTime,
           localReachable: true
         });
         return withBookingState(publicLocalShow, reason === undefined, reason);
@@ -1007,7 +1011,7 @@ export async function getAuthorityAwareBookingShow(showId: string) {
       return withBookingState(show, true);
     }
 
-    const reason = getOnlineBookingUnavailableReason({ authorityMode, status });
+    const reason = decision?.unavailableReason ?? getOnlineBookingUnavailableReason({ authorityMode, status, showTime: show.showTime });
 
     return withBookingState(show, reason === undefined, reason);
   });

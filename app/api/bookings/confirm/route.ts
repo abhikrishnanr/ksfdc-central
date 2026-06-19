@@ -116,7 +116,8 @@ async function confirmForwardedLocalBooking(
     showId,
     theatreId: String(hold.theatreId),
     authorityMode: hold.authorityMode,
-    status: hold.showStatus
+    status: hold.showStatus,
+    allowExistingHoldAfterCutoff: true
   });
   const authorityMode = normalizeAuthorityMode(decision?.authorityMode ?? hold.authorityMode);
   if (authorityMode === 'RETURNING_TO_CENTRAL') {
@@ -201,7 +202,8 @@ export async function POST(request: NextRequest) {
       showId: String(hold.showId),
       theatreId: String(show.theatre_id),
       authorityMode: show.authorityMode,
-      status: show.status
+      status: show.status,
+      allowExistingHoldAfterCutoff: true
     }) : null;
     const authorityMode = normalizeAuthorityMode(decision?.authorityMode ?? show?.authorityMode);
     if (authorityMode === 'RETURNING_TO_CENTRAL') {

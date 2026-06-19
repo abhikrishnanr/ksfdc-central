@@ -15,7 +15,7 @@ export default async function CentralTicketPage({ params }: { params: Promise<{ 
   await ensureCentralSyncInbox();
   const [[booking]] = await getCentralDbPool().query<RowDataPacket[]>(
     `SELECT b.id, b.show_id AS showId, s.theatre_id AS theatreId, b.channel, b.status, b.total_amount AS totalAmount, b.created_at AS createdAt,
-            m.title AS movieTitle, m.poster_url AS moviePosterUrl, t.name AS theatreName, sc.name AS screenName, s.show_time AS showTime,
+            m.id AS movieId, m.title AS movieTitle, m.poster_url AS moviePosterUrl, t.name AS theatreName, sc.name AS screenName, s.show_time AS showTime,
             p.provider, p.payment_mode AS paymentMode, p.provider_reference AS paymentReference,
             p.provider_payment_id AS razorpayPaymentId, p.provider_order_id AS razorpayOrderId,
             p.counter_code AS counterCode
@@ -55,6 +55,7 @@ export default async function CentralTicketPage({ params }: { params: Promise<{ 
     theatreName: String(booking.theatreName),
     screenName: String(booking.screenName),
     movieTitle: String(booking.movieTitle),
+    movieId: String(booking.movieId),
     moviePosterUrl: booking.moviePosterUrl ? String(booking.moviePosterUrl) : null,
     showTime: new Date(booking.showTime).toISOString(),
     issuedAt: new Date(booking.createdAt).toISOString(),

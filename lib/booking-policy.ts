@@ -3,6 +3,7 @@ import type { AuthorityMode } from './types';
 
 export type OnlineBookingUnavailableReason =
   | 'SHOW_NOT_OPEN'
+  | 'BOOKING_CUTOFF_REACHED'
   | 'LOCAL_AUTHORITY_COUNTER_ONLY'
   | 'LOCAL_AUTHORITY_OFFLINE'
   | 'LOCAL_AUTHORITY_UNREACHABLE'
@@ -18,6 +19,7 @@ export type ShowBookingPolicyInput = {
   status?: unknown;
   bookingStatus?: unknown;
   booking_status?: unknown;
+  showTime?: unknown;
   localReachable?: boolean;
 };
 
@@ -33,6 +35,20 @@ const BOOKABLE_AUTHORITY_MODES = new Set<string>([
   'CENTRAL_AUTHORITY',
   'LOCAL_AUTHORITY_ONLINE'
 ]);
+
+export const SHOW_BOOKING_GRACE_MINUTES = 15;
+
+export function getShowBookingCutoff(showTime: unknown) {
+  const date = showTime instanceof Date ? showTime : new Date(String(showTime ?? ''));
+  if (!Number.isFinite(date.getTime())) return null;
+  return new Date(date.getTime() + SHOW_BOOKING_GRACE_MINUTES * 60 * 1000);
+}
+
+export function isShowBookingCutoffReached(showTime: unknown, now: Date | number = new Date()) {
+  const cutoff = getShowBookingCutoff(showTime);
+  const current = now instanceof Date ? now.getTime() : Number(now);
+  return cutoff ? cutoff.getTime() <= current : false;
+}
 
 export function normalizeCentralAuthorityMode(value: unknown): BookableAuthorityMode {
   if (typeof value !== 'string') return 'CENTRAL_AUTHORITY';
@@ -55,6 +71,7 @@ export function getOnlineBookingUnavailableReason(input: ShowBookingPolicyInput)
   const status = normalizeShowStatus(input);
 
   if (status !== 'OPEN') return status === 'SALES_CLOSED' ? 'SALES_CLOSED' : 'SHOW_NOT_OPEN';
+  if (input.showTime && isShowBookingCutoffReached(input.showTime)) return 'BOOKING_CUTOFF_REACHED';
 
   if (BOOKABLE_AUTHORITY_MODES.has(authorityMode)) {
     if (authorityMode === 'LOCAL_AUTHORITY_ONLINE' && input.localReachable === false) {
@@ -73,6 +90,7 @@ export function getOnlineBookingUnavailableReason(input: ShowBookingPolicyInput)
 
 export function getOnlineBookingUnavailableMessage(reason?: OnlineBookingUnavailableReason) {
   if (reason === 'SHOW_NOT_OPEN') return 'Booking is not available for this show.';
+  if (reason === 'BOOKING_CUTOFF_REACHED') return 'Online booking closed 15 minutes after this show started.';
   if (reason === 'LOCAL_AUTHORITY_COUNTER_ONLY') return 'This show is currently controlled by the local theatre counter.';
   if (reason === 'LOCAL_AUTHORITY_OFFLINE') return 'This show is currently controlled by the local theatre counter.';
   if (reason === 'LOCAL_AUTHORITY_UNREACHABLE') return 'Booking is temporarily unavailable for this show. Please try again shortly.';

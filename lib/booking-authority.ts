@@ -2,12 +2,14 @@ import { RowDataPacket } from 'mysql2';
 import { normalizeAuthorityMode } from './authority-mode';
 import { getCentralDbPool } from './db';
 import { getLocalHealth } from './local-theatre-client';
+import { getShowBookingCutoff, type OnlineBookingUnavailableReason } from './booking-policy';
 import type { AuthorityMode } from './types';
 
 export const PUBLIC_LOCAL_UNAVAILABLE_MESSAGE = 'Booking is temporarily unavailable for this show. Please try again shortly.';
 export const PUBLIC_ONLINE_UNAVAILABLE_MESSAGE = 'Online booking is temporarily unavailable for this show.';
 export const PUBLIC_SYNCING_MESSAGE = 'Booking is temporarily paused while the theatre is syncing.';
 export const PUBLIC_SALES_CLOSED_MESSAGE = 'Booking is closed for this show.';
+export const PUBLIC_BOOKING_CUTOFF_MESSAGE = 'Online booking closed 15 minutes after this show started.';
 
 export type BookingAuthorityDecision = {
   showId: string;
@@ -21,6 +23,9 @@ export type BookingAuthorityDecision = {
   publicBookingAllowed: boolean;
   publicMessage: string | null;
   officialReason: string | null;
+  unavailableReason?: OnlineBookingUnavailableReason;
+  bookingCutoffAt: string | null;
+  bookingSecondsRemaining: number | null;
 };
 
 type ShowAuthorityInput = {
@@ -28,6 +33,8 @@ type ShowAuthorityInput = {
   theatreId?: string;
   authorityMode?: unknown;
   status?: unknown;
+  showTime?: unknown;
+  allowExistingHoldAfterCutoff?: boolean;
 };
 
 type ShowAuthorityRow = RowDataPacket & {
@@ -35,6 +42,9 @@ type ShowAuthorityRow = RowDataPacket & {
   theatreId: string;
   authorityMode: string;
   status: string;
+  showTime: Date | string;
+  bookingCutoffAt: Date | string;
+  bookingSecondsRemaining: number;
 };
 
 type HeartbeatRow = RowDataPacket & {
@@ -71,7 +81,7 @@ function localHealthCheckTimeoutMs() {
   );
 }
 
-function baseDecision(input: { showId: string; theatreId: string; authorityMode: AuthorityMode }): BookingAuthorityDecision {
+function baseDecision(input: { showId: string; theatreId: string; authorityMode: AuthorityMode; bookingCutoffAt: string | null; bookingSecondsRemaining: number | null }): BookingAuthorityDecision {
   return {
     showId: input.showId,
     theatreId: input.theatreId,
@@ -83,7 +93,9 @@ function baseDecision(input: { showId: string; theatreId: string; authorityMode:
     mustForwardToLocal: false,
     publicBookingAllowed: false,
     publicMessage: PUBLIC_LOCAL_UNAVAILABLE_MESSAGE,
-    officialReason: null
+    officialReason: null,
+    bookingCutoffAt: input.bookingCutoffAt,
+    bookingSecondsRemaining: input.bookingSecondsRemaining
   };
 }
 
@@ -91,7 +103,9 @@ async function resolveShow(input: ShowAuthorityInput): Promise<ShowAuthorityRow 
   const [[show]] = await getCentralDbPool().query<ShowAuthorityRow[]>(
     `SELECT s.id AS showId, s.theatre_id AS theatreId,
             COALESCE(st.authority_mode, s.authority_mode) AS authorityMode,
-            s.status
+            s.status, s.show_time AS showTime,
+            DATE_ADD(s.show_time, INTERVAL 15 MINUTE) AS bookingCutoffAt,
+            TIMESTAMPDIFF(SECOND, NOW(), DATE_ADD(s.show_time, INTERVAL 15 MINUTE)) AS bookingSecondsRemaining
      FROM shows s
      LEFT JOIN show_authority_state st ON st.show_id = s.id
      WHERE s.id = ?
@@ -102,11 +116,15 @@ async function resolveShow(input: ShowAuthorityInput): Promise<ShowAuthorityRow 
   if (show) return show;
 
   if (input.theatreId && input.authorityMode && input.status) {
+    const cutoff = getShowBookingCutoff(input.showTime);
     return {
       showId: input.showId,
       theatreId: input.theatreId,
       authorityMode: String(input.authorityMode),
-      status: String(input.status)
+      status: String(input.status),
+      showTime: input.showTime ? new Date(String(input.showTime)) : new Date(8640000000000000),
+      bookingCutoffAt: cutoff ?? new Date(8640000000000000),
+      bookingSecondsRemaining: cutoff ? Math.floor((cutoff.getTime() - Date.now()) / 1000) : Number.MAX_SAFE_INTEGER
     } as ShowAuthorityRow;
   }
 
@@ -174,7 +192,9 @@ export async function getBookingAuthorityDecision(input: ShowAuthorityInput): Pr
   const decision = baseDecision({
     showId: String(show.showId),
     theatreId: String(show.theatreId),
-    authorityMode
+    authorityMode,
+    bookingCutoffAt: show.bookingCutoffAt ? new Date(show.bookingCutoffAt).toISOString() : null,
+    bookingSecondsRemaining: Number.isFinite(Number(show.bookingSecondsRemaining)) ? Number(show.bookingSecondsRemaining) : null
   });
 
   if (status !== 'OPEN') {
@@ -182,6 +202,14 @@ export async function getBookingAuthorityDecision(input: ShowAuthorityInput): Pr
       ? PUBLIC_SALES_CLOSED_MESSAGE
       : PUBLIC_ONLINE_UNAVAILABLE_MESSAGE;
     decision.officialReason = status === 'SALES_CLOSED' ? 'SALES_CLOSED' : 'SHOW_NOT_OPEN';
+    decision.unavailableReason = status === 'SALES_CLOSED' ? 'SALES_CLOSED' : 'SHOW_NOT_OPEN';
+    return decision;
+  }
+
+  if (!input.allowExistingHoldAfterCutoff && decision.bookingSecondsRemaining != null && decision.bookingSecondsRemaining <= 0) {
+    decision.publicMessage = PUBLIC_BOOKING_CUTOFF_MESSAGE;
+    decision.officialReason = 'BOOKING_CUTOFF_REACHED';
+    decision.unavailableReason = 'BOOKING_CUTOFF_REACHED';
     return decision;
   }
 
@@ -204,6 +232,7 @@ export async function getBookingAuthorityDecision(input: ShowAuthorityInput): Pr
       decision.mustForwardToLocal = true;
       decision.publicMessage = PUBLIC_LOCAL_UNAVAILABLE_MESSAGE;
       decision.officialReason = heartbeat.reason;
+      decision.unavailableReason = 'LOCAL_AUTHORITY_UNREACHABLE';
       return decision;
     }
 
@@ -213,35 +242,49 @@ export async function getBookingAuthorityDecision(input: ShowAuthorityInput): Pr
     decision.publicBookingAllowed = health.reachable;
     decision.publicMessage = health.reachable ? null : PUBLIC_LOCAL_UNAVAILABLE_MESSAGE;
     decision.officialReason = health.reason;
+    decision.unavailableReason = health.reachable ? undefined : 'LOCAL_AUTHORITY_UNREACHABLE';
     return decision;
   }
 
   if (authorityMode === 'LOCAL_AUTHORITY_OFFLINE' || authorityMode === 'LOCAL_AUTHORITY_COUNTER_ONLY') {
     decision.publicMessage = PUBLIC_ONLINE_UNAVAILABLE_MESSAGE;
     decision.officialReason = authorityMode;
+    decision.unavailableReason = authorityMode === 'LOCAL_AUTHORITY_OFFLINE' ? 'LOCAL_AUTHORITY_OFFLINE' : 'LOCAL_AUTHORITY_COUNTER_ONLY';
     return decision;
   }
 
   if (authorityMode === 'LOCAL_SYNCING' || authorityMode === 'RETURNING_TO_CENTRAL') {
     decision.publicMessage = PUBLIC_SYNCING_MESSAGE;
     decision.officialReason = authorityMode;
+    decision.unavailableReason = 'SYNC_IN_PROGRESS';
     return decision;
   }
 
   if (authorityMode === 'SALES_CLOSED') {
     decision.publicMessage = PUBLIC_SALES_CLOSED_MESSAGE;
     decision.officialReason = 'SALES_CLOSED';
+    decision.unavailableReason = 'SALES_CLOSED';
     return decision;
   }
 
   decision.officialReason = 'UNKNOWN_AUTHORITY_MODE';
+  decision.unavailableReason = 'UNKNOWN';
   return decision;
 }
 
 export function authorityUnavailablePayload(decision: BookingAuthorityDecision | null) {
+  if (decision?.unavailableReason === 'BOOKING_CUTOFF_REACHED') {
+    return {
+      success: false,
+      error: 'BOOKING_CLOSED',
+      reason: 'BOOKING_CUTOFF_REACHED',
+      message: PUBLIC_BOOKING_CUTOFF_MESSAGE
+    };
+  }
   return {
     success: false,
     error: 'SHOW_TEMPORARILY_UNAVAILABLE',
+    reason: decision?.unavailableReason ?? decision?.officialReason ?? 'UNKNOWN',
     message: decision?.publicMessage ?? PUBLIC_LOCAL_UNAVAILABLE_MESSAGE
   };
 }

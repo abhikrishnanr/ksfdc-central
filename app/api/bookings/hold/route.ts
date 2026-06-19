@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
   const showId = payload.showId;
   const seatIds = [...new Set(payload.seatIds ?? [])];
   const idempotencyKey = request.headers.get('idempotency-key') ?? `hold-${randomUUID()}`;
-  const holdSeconds = publicHoldSeconds();
+  const configuredHoldSeconds = publicHoldSeconds();
 
   if (!showId || !seatIds.length) {
     return NextResponse.json({ error: 'showId and at least one seatId are required.' }, { status: 400 });
@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
   if (!preDecision.publicBookingAllowed) {
     return NextResponse.json(authorityUnavailablePayload(preDecision), { status: preDecision.authorityMode === 'LOCAL_AUTHORITY_ONLINE' ? 503 : 409 });
   }
+  const holdSeconds = Math.max(1, Math.min(configuredHoldSeconds, preDecision.bookingSecondsRemaining ?? configuredHoldSeconds));
 
   if (publicOtpEnabled() && !publicSession) {
     return NextResponse.json({

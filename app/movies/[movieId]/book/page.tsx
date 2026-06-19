@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { EmptyState } from '../../../../components/premium-ui';
 import { getMovieDetail, getPublicShowtimes, type PublicShowtimeSummary } from '../../../../lib/central-data';
+import { midnightShowNote } from '../../../../lib/show-time';
 
 function formatTime(value: string) {
   return new Intl.DateTimeFormat('en-IN', { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
@@ -82,12 +83,14 @@ export default async function MovieBookingPage({ params, searchParams }: { param
                 return canBook ? (
                   <Link className="showtime-chip dark" href={`/book/${show.showId}`} key={show.showId}>
                     {formatTime(show.showTime)}
+                    {midnightShowNote(show.showTime) ? <em>Midnight show</em> : null}
                     <small>{show.formats[0] ?? '2D'} - {show.availableSeats} seats</small>
                   </Link>
                 ) : (
                   <span className="showtime-chip dark disabled" key={show.showId}>
                     {formatTime(show.showTime)}
-                    <small>Temporarily unavailable</small>
+                    {midnightShowNote(show.showTime) ? <em>Midnight show</em> : null}
+                    <small>{show.reason === 'BOOKING_CUTOFF_REACHED' ? 'Booking closed' : 'Temporarily unavailable'}</small>
                   </span>
                 );
               })}
