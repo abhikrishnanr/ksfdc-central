@@ -19,18 +19,22 @@ function mysqlPort(value: string | undefined) {
 export function getCentralDbPool() {
   if (!pool) {
     const databaseUrl = process.env.DATABASE_URL?.trim();
+    const connectionDefaults = {
+      timezone: '+05:30',
+      waitForConnections: true,
+      connectionLimit: 10,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 0
+    } as const;
     pool = databaseUrl
-      ? mysql.createPool(databaseUrl)
+      ? mysql.createPool({ uri: databaseUrl, ...connectionDefaults })
       : mysql.createPool({
           host: mysqlHost(process.env.MYSQL_HOST),
           port: mysqlPort(process.env.MYSQL_PORT),
           user: process.env.MYSQL_USER ?? 'root',
           password: process.env.MYSQL_PASSWORD ?? '',
           database: process.env.MYSQL_DATABASE ?? 'ksfdc_central',
-          waitForConnections: true,
-          connectionLimit: 10,
-          enableKeepAlive: true,
-          keepAliveInitialDelay: 0
+          ...connectionDefaults
         });
   }
   return pool;
