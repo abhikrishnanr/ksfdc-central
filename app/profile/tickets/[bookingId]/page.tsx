@@ -12,7 +12,7 @@ import { getPublicSession } from '../../../../lib/public-auth';
 import { ensureCentralSyncInbox } from '../../../../lib/sync';
 
 function formatTime(value: unknown) {
-  return value ? new Date(value as string | Date).toLocaleString('en-IN') : 'Not recorded';
+  return value ? new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(value as string | Date)) : 'Not recorded';
 }
 
 function ticketToken(bookingId: string, showId: string) {

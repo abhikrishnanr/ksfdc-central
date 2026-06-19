@@ -6,7 +6,7 @@ import { EmptyState, PageHeader } from '../../components/premium-ui';
 import { midnightShowNote } from '../../lib/show-time';
 
 function formatTime(value: string) {
-  return new Intl.DateTimeFormat('en-IN', { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+  return new Intl.DateTimeFormat('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }).format(new Date(value));
 }
 
 function dateTabs(day: number, city?: string, movie?: string, theatre?: string) {

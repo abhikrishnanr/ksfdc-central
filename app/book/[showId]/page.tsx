@@ -10,7 +10,7 @@ import { MoonStar } from 'lucide-react';
 import { isMidnightShow } from '../../../lib/show-time';
 
 function formatTime(value: string) {
-  return new Intl.DateTimeFormat('en-IN', { timeStyle: 'short', dateStyle: 'medium' }).format(new Date(value));
+  return new Intl.DateTimeFormat('en-IN', { timeStyle: 'short', dateStyle: 'medium', timeZone: 'Asia/Kolkata' }).format(new Date(value));
 }
 
 export default async function CentralBookingPage({ params }: { params: Promise<{ showId: string }> }) {
