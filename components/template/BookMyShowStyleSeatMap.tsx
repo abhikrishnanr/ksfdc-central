@@ -134,10 +134,10 @@ export default function BookMyShowStyleSeatMap({
         centerOnInit
         centerZoomedOut
         limitToBounds={false}
-        wheel={{ step: 0.12 }}
-        panning={{ velocityDisabled: false, excluded: scale > 1 ? [] : ['button'] }}
-        pinch={{ step: 5 }}
-        doubleClick={{ mode: 'toggle', step: 0.55, excluded: ['button'] }}
+        wheel={{ step: 0.018 }}
+        panning={{ velocityDisabled: true, excluded: scale > 1 ? [] : ['button'] }}
+        pinch={{ step: 3 }}
+        doubleClick={{ mode: 'toggle', step: 0.35, excluded: ['button'] }}
         onTransform={(_, nextState) => setScale(nextState.scale)}
         onInit={({ instance, setTransform }) => {
           requestAnimationFrame(() => {
@@ -153,9 +153,9 @@ export default function BookMyShowStyleSeatMap({
         {({ zoomIn, zoomOut, centerView }) => (
           <>
             <div className="seat-map-toolbar unified-seat-toolbar" aria-label="Seat map controls">
-              <button type="button" aria-label="Zoom out" title="Zoom out" onClick={() => zoomOut(0.16)}><Minus size={17} /></button>
+              <button type="button" aria-label="Zoom out" title="Zoom out" onClick={() => zoomOut(0.1)}><Minus size={17} /></button>
               <span>{Math.round(scale * 100)}%</span>
-              <button type="button" aria-label="Zoom in" title="Zoom in" onClick={() => zoomIn(0.16)}><Plus size={17} /></button>
+              <button type="button" aria-label="Zoom in" title="Zoom in" onClick={() => zoomIn(0.1)}><Plus size={17} /></button>
               <button type="button" aria-label="Fit whole hall" title="Fit whole hall" onClick={() => centerView(Math.max(0.3, Math.min(0.92, (window.innerWidth - 32) / 1080)), 180)}><Maximize2 size={16} /></button>
               <button className="seat-fullscreen-button" type="button" aria-label={fullscreen ? 'Exit fullscreen seat map' : 'Open fullscreen seat map'} title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'} onClick={() => void toggleFullscreen()}>
                 {fullscreen ? <Minimize2 size={17} /> : <Maximize2 size={17} />}

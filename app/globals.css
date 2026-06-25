@@ -4465,3 +4465,238 @@ html[data-theme="light"],
 [data-theme="light"] body:has(.checker-login-page) {
   background: #f5f8f5;
 }
+
+/* Light theme contrast hardening. Keep this after the broad theme rules. */
+[data-theme="light"] .hero-movie-copy p,
+[data-theme="light"] .hero-movie-copy span,
+[data-theme="light"] .movie-detail-title p,
+[data-theme="light"] .movie-detail-title span,
+[data-theme="light"] .movie-detail-title .public-eyebrow {
+  color: #eefbf7;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.75);
+}
+
+[data-theme="light"] .hero-movie-copy h1,
+[data-theme="light"] .movie-detail-title h1 {
+  color: #ffffff;
+  text-shadow: 0 5px 28px rgba(0, 0, 0, 0.82);
+}
+
+[data-theme="light"] .hero-details-link {
+  color: #ffffff;
+  border-bottom-color: #29d3ad;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.75);
+}
+
+[data-theme="light"] .quick-book-card h2,
+[data-theme="light"] .side-card-title,
+[data-theme="light"] .poster-card-copy h3,
+[data-theme="light"] .feature-strip strong,
+[data-theme="light"] .supporting-cinema-banner h2,
+[data-theme="light"] .theatre-network-card span,
+[data-theme="light"] .notice-list p,
+[data-theme="light"] .public-footer,
+[data-theme="light"] .public-footer a,
+[data-theme="light"] .public-footer nav,
+[data-theme="light"] .public-footer span {
+  color: #10201f;
+}
+
+[data-theme="light"] .quick-book-card h2 span,
+[data-theme="light"] .side-card-title svg,
+[data-theme="light"] .feature-strip div:nth-child(1) span,
+[data-theme="light"] .feature-strip div:nth-child(2) span,
+[data-theme="light"] .feature-strip div:nth-child(3) span,
+[data-theme="light"] .feature-strip div:nth-child(4) span {
+  color: #056b55;
+  border-color: #08725d;
+}
+
+[data-theme="light"] .feature-strip small,
+[data-theme="light"] .poster-card-copy p,
+[data-theme="light"] .poster-card-copy span,
+[data-theme="light"] .supporting-cinema-banner p,
+[data-theme="light"] .notice-list small {
+  color: #405654;
+}
+
+[data-theme="light"] .poster-card-copy span {
+  border-color: rgba(10, 36, 34, 0.28);
+  background: #f0f7f4;
+}
+
+[data-theme="light"] .poster-movie-card {
+  background: #ffffff;
+}
+
+[data-theme="light"] .public-info-card .public-eyebrow {
+  color: #8a3f00;
+}
+
+[data-theme="light"] .people-grid .person-pill,
+[data-theme="light"] .person-pill {
+  color: #10201f;
+  border-color: rgba(10, 36, 34, 0.18);
+  background: #f3faf7;
+  box-shadow: none;
+}
+
+[data-theme="light"] .person-pill strong {
+  color: #10201f;
+}
+
+[data-theme="light"] .person-pill span {
+  color: #405654;
+}
+
+[data-theme="light"] .booking-progress-panel,
+[data-theme="light"] .booking-progress-panel h2,
+[data-theme="light"] .booking-progress-panel strong,
+[data-theme="light"] .booking-progress-panel label,
+[data-theme="light"] .booking-progress-copy h2 {
+  color: #f8fafc;
+}
+
+[data-theme="light"] .booking-progress-copy p {
+  color: #d0dae7;
+}
+
+[data-theme="light"] .booking-progress-copy span {
+  color: #fbbf24;
+}
+
+[data-theme="light"] .booking-progress-panel .action-button.primary {
+  color: #07111f;
+  background: #fbbf24;
+}
+
+[data-theme="light"] .booking-progress-panel input,
+[data-theme="light"] .booking-progress-panel textarea {
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] .booking-auth-modal-card,
+[data-theme="light"] .booking-auth-modal-card h2,
+[data-theme="light"] .booking-auth-modal-card strong,
+[data-theme="light"] .booking-auth-modal-card label {
+  color: #f8fafc;
+}
+
+[data-theme="light"] .booking-auth-modal-card p,
+[data-theme="light"] .booking-auth-modal-card span,
+[data-theme="light"] .booking-auth-modal-card small {
+  color: #cbd5e1;
+}
+
+[data-theme="light"] .booking-auth-modal-card input {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.32);
+}
+
+[data-theme="light"] .booking-auth-modal-card input::placeholder {
+  color: #94a3b8;
+}
+
+[data-theme="light"] .booking-auth-modal-card button:not(:disabled) {
+  opacity: 1;
+}
+
+[data-theme="light"] .booking-alert-modal {
+  color: #10201f;
+  background: #fffdf7;
+}
+
+[data-theme="light"] .seat-legend.public-dark.unified-seat-legend {
+  color: #f8fafc;
+  background: #09252d;
+}
+
+[data-theme="light"] .seat-legend.public-dark.unified-seat-legend .seat-legend-item {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+[data-theme="light"] .seat-legend.public-dark.unified-seat-legend .seat-legend-item.seat-available {
+  color: #dfffee;
+  background: #07543f;
+}
+
+[data-theme="light"] .seat-legend.public-dark.unified-seat-legend .seat-legend-item.seat-held {
+  color: #211300;
+  background: #ffd166;
+}
+
+[data-theme="light"] .seat-legend.public-dark.unified-seat-legend .seat-legend-item.seat-sold {
+  color: #331313;
+  background: #ffc4c4;
+}
+
+[data-theme="light"] .seat-legend.public-dark.unified-seat-legend .seat-legend-item.seat-blocked {
+  color: #18212b;
+  background: #dbe4ee;
+}
+
+[data-theme="light"] .seat-legend.public-dark.unified-seat-legend .seat-legend-item.seat-selected {
+  color: #ffffff;
+  background: #04785f;
+}
+
+[data-theme="light"] .unified-seat-toolbar {
+  background: #09252d;
+}
+
+[data-theme="light"] .unified-seat-hall,
+[data-theme="light"] .unified-seat-hall .row-label.public,
+[data-theme="light"] .unified-zone-heading {
+  color: #edf7f5;
+}
+
+[data-theme="light"] .unified-zone-heading strong {
+  color: #edf7f5;
+}
+
+[data-theme="light"] .unified-zone-heading span {
+  color: #ffd166;
+}
+
+[data-theme="light"] .unified-screen span {
+  color: #d7eef6;
+}
+
+[data-theme="light"] .seat-button.public.seat-available {
+  color: #eafff8;
+  border-color: #139667;
+  background: #063f32;
+}
+
+[data-theme="light"] .seat-button.public.seat-selected {
+  color: #ffffff;
+  border-color: #29d3ad;
+  background: #04785f;
+}
+
+[data-theme="light"] .seat-button.public.seat-held {
+  color: #211300;
+  border-color: #f6b834;
+  background: #ffd166;
+}
+
+[data-theme="light"] .seat-button.public.seat-sold {
+  color: #4a1717;
+  border-color: #f3b0b0;
+  background: #ffd4d4;
+}
+
+[data-theme="light"] .seat-button.public.seat-blocked {
+  color: #28323d;
+  border-color: #cbd5e1;
+  background: #e2e8f0;
+}
+
+[data-theme="light"] .public-booking-topbar strong,
+[data-theme="light"] .same-day-showtimes h2,
+[data-theme="light"] .same-day-showtimes .public-eyebrow {
+  color: #10201f;
+}

@@ -113,7 +113,7 @@ function EmailOtpModal({
   const isOtpStep = step === 'OTP';
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-xl">
+    <div className="booking-auth-modal-backdrop fixed inset-0 z-[90] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-xl">
       <button
         type="button"
         aria-label="Close verification popup"
@@ -122,7 +122,7 @@ function EmailOtpModal({
         className="absolute inset-0 cursor-default"
       />
 
-      <div className="relative z-[91] w-full max-w-[520px] overflow-hidden rounded-[28px] border border-white/15 bg-[#07111f] shadow-[0_28px_100px_rgba(0,0,0,0.7)]">
+      <div className="booking-auth-modal-card relative z-[91] w-full max-w-[520px] overflow-hidden rounded-[28px] border border-white/15 bg-[#07111f] shadow-[0_28px_100px_rgba(0,0,0,0.7)]">
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#f5b82e] via-[#22c55e] to-[#38bdf8]" />
 
         <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#f5b82e]/15 blur-3xl" />
