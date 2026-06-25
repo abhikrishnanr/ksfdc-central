@@ -3589,12 +3589,21 @@ body:has(.checker-login-page) .page-frame { width: 100%; max-width: none; paddin
 .showtime-chip,
 .showtime-chip.dark {
   min-width: 104px;
-  min-height: 48px;
+  min-height: 68px;
   align-content: center;
+  justify-items: center;
+  gap: 0.16rem;
   border: 2px solid #41dfb4;
   color: #ffffff;
   background: var(--portal-lagoon-dark);
   box-shadow: 0 5px 16px rgba(0, 0, 0, 0.18);
+}
+.showtime-chip strong,
+.showtime-chip.dark strong {
+  display: block;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1.05;
 }
 .showtime-chip small,
 .showtime-chip.dark small { color: #e7fff8; }
@@ -3845,7 +3854,15 @@ body:has(.checker-login-page) .page-frame { width: 100%; max-width: none; paddin
 .ticket-qr-modal-heading { display: flex; align-items: center; gap: 0.45rem; color: #baffed; font-weight: 850; }
 .ticket-qr-close { position: absolute; top: 0.65rem; right: 0.65rem; display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid rgba(255,255,255,0.18); border-radius: 50%; color: #fff; background: #122b31; }
 
-.showtime-chip em { display: block; color: var(--portal-marigold); font-size: 0.66rem; font-style: normal; font-weight: 900; text-transform: uppercase; }
+.showtime-chip em {
+  display: block;
+  color: var(--portal-marigold);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
 .midnight-show-banner {
   display: flex;
   align-items: center;

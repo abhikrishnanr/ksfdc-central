@@ -17,3 +17,18 @@ export function isMidnightShow(value: string | Date) {
 export function midnightShowNote(value: string | Date) {
   return isMidnightShow(value) ? 'MIDNIGHT SHOW - continues after midnight' : null;
 }
+
+export function showDaypartLabel(value: string | Date) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) return 'Show time';
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'Asia/Kolkata'
+  }).formatToParts(date);
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value);
+  if (hour >= 5 && hour < 12) return 'Morning';
+  if (hour >= 12 && hour < 16) return 'Noon';
+  if (hour >= 16 && hour < 20) return 'Evening';
+  return 'Night';
+}

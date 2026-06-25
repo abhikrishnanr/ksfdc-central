@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { EmptyState, PageHeader } from '../../../components/premium-ui';
 import { getTheatreDetail } from '../../../lib/central-data';
-import { midnightShowNote } from '../../../lib/show-time';
+import { showDaypartLabel } from '../../../lib/show-time';
 
 function formatTime(value: string) {
   return new Intl.DateTimeFormat('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }).format(new Date(value));
@@ -40,14 +40,14 @@ export default async function TheatreDetailPage({ params }: { params: Promise<{ 
               </div>
               {canBook ? (
                 <Link className="showtime-chip dark" href={`/book/${show.showId}`}>
-                  {formatTime(show.showTime)}
-                  {midnightShowNote(show.showTime) ? <em>Midnight show</em> : null}
+                  <strong>{formatTime(show.showTime)}</strong>
+                  <em>{showDaypartLabel(show.showTime)}</em>
                   <small>Book - {show.availableSeats} seats</small>
                 </Link>
               ) : (
                 <span className="showtime-chip dark disabled" aria-disabled="true">
-                  {formatTime(show.showTime)}
-                  {midnightShowNote(show.showTime) ? <em>Midnight show</em> : null}
+                  <strong>{formatTime(show.showTime)}</strong>
+                  <em>{showDaypartLabel(show.showTime)}</em>
                   <small>{show.reason === 'BOOKING_CUTOFF_REACHED' ? 'Booking closed' : 'Temporarily unavailable'}</small>
                 </span>
               )}
