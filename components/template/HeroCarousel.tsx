@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { ArrowRight, ChevronLeft, ChevronRight, Ticket } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { CentralMovieSummary, PublicShowtimeSummary } from '../../lib/central-data';
+import type { CentralMovieSummary } from '../../lib/central-data';
 
-type HeroSlide = { movie: CentralMovieSummary; show?: PublicShowtimeSummary | null };
+type HeroSlide = { movie: CentralMovieSummary; show?: { showId: string } | null };
 
 export default function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   const [active, setActive] = useState(0);

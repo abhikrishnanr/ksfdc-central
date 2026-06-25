@@ -1,7 +1,7 @@
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 import Link from 'next/link';
-import { getMovies, getPublicShowtimes, getTheatres } from '../lib/central-data';
+import { getHomeShowLinks, getMovies, getTheatres } from '../lib/central-data';
 import HeroCarousel from '../components/template/HeroCarousel';
 import QuickBookCard from '../components/template/QuickBookCard';
 import NowShowingRail from '../components/template/NowShowingRail';
@@ -11,11 +11,16 @@ import { BadgeCheck, Headphones, MapPinned, Sparkles } from 'lucide-react';
 
 export default async function HomePage({ searchParams }: { searchParams?: Promise<{ city?: string }> }) {
   const params = await searchParams;
-  const city = params?.city;
-  const { data: movies } = await getMovies();
-  const { data: shows } = await getPublicShowtimes({ city });
-  const { data: theatres } = await getTheatres();
-  const featuredSlides = movies.slice(0, 5).map((movie) => ({ movie, show: shows.find((show) => show.movieId === movie.id) ?? null }));
+  const city = params?.city && params.city !== 'Kerala' ? params.city : undefined;
+  const [{ data: movies }, { data: showLinks }, { data: theatres }] = await Promise.all([
+    getMovies(),
+    getHomeShowLinks(city),
+    getTheatres()
+  ]);
+  const featuredSlides = movies.slice(0, 5).map((movie) => ({
+    movie,
+    show: showLinks.find((show) => show.movieId === movie.id) ?? null
+  }));
 
   return (
     <section className="ksfdc-home-grid">

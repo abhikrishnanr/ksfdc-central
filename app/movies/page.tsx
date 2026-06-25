@@ -1,15 +1,14 @@
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
-import { getMovies } from '../../lib/central-data';
-import { getPublicShowtimes } from '../../lib/central-data';
+import { getMovieIdsWithUpcomingShows, getMovies } from '../../lib/central-data';
 import { EmptyState, PageHeader } from '../../components/premium-ui';
 import MovieCard from '../../components/template/MovieCard';
 
 export default async function MoviesPage({ searchParams }: { searchParams?: Promise<{ city?: string }> }) {
   const params = await searchParams;
   const { dbStatus, data: movies } = await getMovies();
-  const cityShows = params?.city ? await getPublicShowtimes({ city: params.city }) : null;
-  const movieIds = cityShows ? new Set(cityShows.data.map((show) => show.movieId)) : null;
+  const cityShows = params?.city && params.city !== 'Kerala' ? await getMovieIdsWithUpcomingShows(params.city) : null;
+  const movieIds = cityShows ? new Set(cityShows.data) : null;
   const filteredMovies = movieIds ? movies.filter((movie) => movieIds.has(movie.id)) : movies;
 
   return (

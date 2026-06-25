@@ -1,5 +1,7 @@
-export const dynamic = 'force-dynamic';
-
+// This page only reads the theatre directory (name, city, screen count),
+// which is now cached in lib/central-data.ts. Live seat/show data lives on
+// /theatres/[theatreId] and /book/[showId], which remain fully dynamic.
+export const revalidate = 30;
 import { EmptyState, PageHeader } from '../../components/premium-ui';
 import { getTheatres } from '../../lib/central-data';
 import TheatreCard from '../../components/template/TheatreCard';

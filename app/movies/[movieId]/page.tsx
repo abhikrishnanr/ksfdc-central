@@ -1,4 +1,9 @@
-export const dynamic = 'force-dynamic';
+// This page only reads catalogue data (synopsis, cast, crew) which is now
+// cached in lib/central-data.ts. Seat availability and booking happen on the
+// dedicated /book/[showId] route, which stays fully dynamic. Revalidating
+// every 30s lets Next.js serve this page instantly from cache instead of
+// blocking on a fresh render for every visit.
+export const revalidate = 30;
 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';

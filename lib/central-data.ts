@@ -1,3 +1,5 @@
+import { cache as reactCache } from 'react';
+import { unstable_cache as nextCache } from 'next/cache';
 import { RowDataPacket } from 'mysql2';
 import { canShowBeBookedOnline, getOnlineBookingUnavailableMessage, getOnlineBookingUnavailableReason, normalizeCentralAuthorityMode } from './booking-policy';
 import type { OnlineBookingUnavailableReason } from './booking-policy';
@@ -5,6 +7,22 @@ import { checkCentralDb, getCentralDbPool } from './db';
 import { ensureCentralHeartbeatTables, ensureCentralMirrorEventsTable, ensureCentralSyncInbox } from './sync';
 import { getLocalShowSeats } from './local-theatre-client';
 import { getBookingAuthorityDecision } from './booking-authority';
+
+// Caching strategy
+// -----------------
+// Only catalogue-style reference data (movie/theatre metadata: titles, posters,
+// synopsis, cast/crew) is cached here. Anything that reflects live seat
+// inventory, booking authority, sync, or admin/ops state (getTodaysShows,
+// getPublicShowtimes, getBookingShow, getAuthorityAwareBookingShow,
+// getAdminDashboard, getSeatLayouts, etc.) is intentionally left untouched so
+// the booking and backend flows keep reading straight from the database.
+//
+// Two layers are used together:
+// - `reactCache` dedupes identical calls within a single request/render pass
+//   (e.g. the same movie list being read by multiple components).
+// - `nextCache` (Next.js Data Cache) keeps results warm for a short window
+//   across requests, so repeat visits don't re-run the same catalogue query.
+const REFERENCE_DATA_REVALIDATE_SECONDS = 30;
 
 export type DbStatus = Awaited<ReturnType<typeof checkCentralDb>>;
 
@@ -99,6 +117,11 @@ export interface PublicSearchSuggestion {
   label: string;
   detail: string;
   href: string;
+}
+
+export interface HomeShowLink {
+  movieId: string;
+  showId: string;
 }
 
 export interface CentralTheatreSummary {
@@ -307,8 +330,8 @@ export async function getTodaysShows() {
   });
 }
 
-export async function getMovies() {
-  return safe<CentralMovieSummary[]>([], async () => {
+const loadMoviesCached = nextCache(
+  async (): Promise<CentralMovieSummary[]> => {
     const [rows] = await getCentralDbPool().query<RowDataPacket[]>(`
       SELECT m.id, m.title, m.language, m.duration_minutes AS durationMinutes, m.certificate,
              m.release_date AS releaseDate, m.poster_url AS posterUrl, m.youtube_trailer_url AS trailerUrl,
@@ -336,8 +359,50 @@ export async function getMovies() {
       languages: parseJsonArray(row.languagesJson),
       activeShowCount: Number(row.activeShowCount ?? 0)
     }));
-  });
-}
+  },
+  ['central-movies'],
+  { revalidate: REFERENCE_DATA_REVALIDATE_SECONDS, tags: ['movies'] }
+);
+
+export const getMovies = reactCache(async () => {
+  return safe<CentralMovieSummary[]>([], loadMoviesCached);
+});
+
+const loadHomeShowLinksCached = nextCache(
+  async (city?: string | null): Promise<HomeShowLink[]> => {
+    const filters = [
+      "s.status = 'OPEN'",
+      's.show_time >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)',
+      's.show_time < DATE_ADD(CURRENT_DATE(), INTERVAL 3 DAY)'
+    ];
+    const params: string[] = [];
+    if (city && city !== 'Kerala') {
+      filters.push('t.city = ?');
+      params.push(city);
+    }
+
+    const [rows] = await getCentralDbPool().query<RowDataPacket[]>(`
+      SELECT s.movie_id AS movieId, s.id AS showId
+      FROM shows s
+      JOIN theatres t ON t.id = s.theatre_id
+      WHERE ${filters.join(' AND ')}
+      ORDER BY s.show_time ASC
+    `, params);
+
+    const firstShowByMovie = new Map<string, string>();
+    for (const row of rows) {
+      const movieId = String(row.movieId);
+      if (!firstShowByMovie.has(movieId)) firstShowByMovie.set(movieId, String(row.showId));
+    }
+    return Array.from(firstShowByMovie, ([movieId, showId]) => ({ movieId, showId }));
+  },
+  ['central-home-show-links'],
+  { revalidate: REFERENCE_DATA_REVALIDATE_SECONDS, tags: ['home-show-links'] }
+);
+
+export const getHomeShowLinks = reactCache(async (city?: string | null) => {
+  return safe<HomeShowLink[]>([], () => loadHomeShowLinksCached(city));
+});
 
 export async function getPublicShowtimes(options: { dayOffset?: number; city?: string | null; movieId?: string | null; theatreId?: string | null } = {}) {
   return safe<PublicShowtimeSummary[]>([], async () => {
@@ -437,8 +502,8 @@ export async function getPublicShowtimes(options: { dayOffset?: number; city?: s
   });
 }
 
-export async function getMovieDetail(movieId: string) {
-  return safe<CentralMovieDetail | null>(null, async () => {
+const loadMovieDetailCached = nextCache(
+  async (movieId: string): Promise<CentralMovieDetail | null> => {
     const [[movie]] = await getCentralDbPool().query<RowDataPacket[]>(`
       SELECT m.id, m.title, m.language, m.duration_minutes AS durationMinutes, m.certificate,
              m.release_date AS releaseDate, m.poster_url AS posterUrl, m.youtube_trailer_url AS trailerUrl,
@@ -497,8 +562,41 @@ export async function getMovieDetail(movieId: string) {
         format: null
       }))
     };
-  });
-}
+  },
+  ['central-movie-detail'],
+  { revalidate: REFERENCE_DATA_REVALIDATE_SECONDS, tags: ['movie-detail'] }
+);
+
+export const getMovieDetail = reactCache(async (movieId: string) => {
+  return safe<CentralMovieDetail | null>(null, () => loadMovieDetailCached(movieId));
+});
+
+const loadMovieIdsWithUpcomingShowsCached = nextCache(
+  async (city?: string | null): Promise<string[]> => {
+    const filters = [
+      "s.status IN ('SCHEDULED','OPEN')",
+      's.show_time >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)'
+    ];
+    const params: string[] = [];
+    if (city && city !== 'Kerala') {
+      filters.push('t.city = ?');
+      params.push(city);
+    }
+    const [rows] = await getCentralDbPool().query<RowDataPacket[]>(`
+      SELECT DISTINCT s.movie_id AS movieId
+      FROM shows s
+      JOIN theatres t ON t.id = s.theatre_id
+      WHERE ${filters.join(' AND ')}
+    `, params);
+    return rows.map((row) => String(row.movieId));
+  },
+  ['central-movie-ids-with-upcoming-shows'],
+  { revalidate: REFERENCE_DATA_REVALIDATE_SECONDS, tags: ['movie-show-links'] }
+);
+
+export const getMovieIdsWithUpcomingShows = reactCache(async (city?: string | null) => {
+  return safe<string[]>([], () => loadMovieIdsWithUpcomingShowsCached(city));
+});
 
 export async function getTheatreDetail(theatreId: string) {
   return safe<(CentralTheatreSummary & { showtimes: PublicShowtimeSummary[] }) | null>(null, async () => {
@@ -567,8 +665,8 @@ export async function getPublicSearchSuggestions(query: string) {
   });
 }
 
-export async function getTheatres() {
-  return safe<CentralTheatreSummary[]>([], async () => {
+const loadTheatresCached = nextCache(
+  async (): Promise<CentralTheatreSummary[]> => {
     const [rows] = await getCentralDbPool().query<RowDataPacket[]>(`
       SELECT t.id, t.code, t.name, t.city,
              COUNT(DISTINCT sc.id) AS screenCount,
@@ -591,8 +689,14 @@ export async function getTheatres() {
       activeShowCount: Number(row.activeShowCount ?? 0),
       priceStartsAt: row.priceStartsAt == null ? null : Number(row.priceStartsAt)
     }));
-  });
-}
+  },
+  ['central-theatres'],
+  { revalidate: REFERENCE_DATA_REVALIDATE_SECONDS, tags: ['theatres'] }
+);
+
+export const getTheatres = reactCache(async () => {
+  return safe<CentralTheatreSummary[]>([], loadTheatresCached);
+});
 
 export async function getHomeData() {
   const shows = await getTodaysShows();
