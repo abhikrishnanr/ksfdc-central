@@ -4576,6 +4576,32 @@ html[data-theme="light"],
   background: rgba(0, 0, 0, 0.3);
 }
 
+[data-theme="light"] .booking-progress-overlay .booking-progress-panel {
+  color: #f8fafc !important;
+  border-color: rgba(148, 163, 184, 0.36);
+  background: #07111f;
+}
+
+[data-theme="light"] .booking-progress-overlay .booking-progress-copy h2 {
+  color: #f8fafc !important;
+}
+
+[data-theme="light"] .booking-progress-overlay .booking-progress-copy p {
+  color: #d7e2ef !important;
+}
+
+[data-theme="light"] .booking-progress-overlay .booking-progress-copy span {
+  color: #ffd166 !important;
+}
+
+[data-theme="light"] .booking-progress-overlay .booking-progress-icon {
+  color: #67e8f9;
+}
+
+[data-theme="light"] .booking-progress-overlay .booking-progress-track {
+  background: rgba(255, 255, 255, 0.18);
+}
+
 [data-theme="light"] .booking-auth-modal-card,
 [data-theme="light"] .booking-auth-modal-card h2,
 [data-theme="light"] .booking-auth-modal-card strong,
