@@ -353,6 +353,7 @@ function BookingProgressOverlay({
 export default function BookingSeatPicker({ show }: { show: BookingShowDetail }) {
   const router = useRouter();
 
+  const [currentShow, setCurrentShow] = useState(show);
   const [selected, setSelected] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [alert, setAlert] = useState<{ title: string; message: string } | null>(null);
@@ -373,12 +374,12 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
   const seatMap = useMemo(
     () =>
       new Map(
-        show.rows
+        currentShow.rows
           .flatMap((row) => row.cells)
           .filter((cell) => cell.kind === 'SEAT' && cell.seatId)
           .map((cell) => [cell.seatId as string, cell])
       ),
-    [show.rows]
+    [currentShow.rows]
   );
 
   const selectedGroups = useMemo(() => groupSeats(selected, seatMap), [selected, seatMap]);
@@ -416,7 +417,7 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
   }
 
   function toggle(cell: SeatCell) {
-    if (show.bookingEnabled === false) {
+    if (currentShow.bookingEnabled === false) {
       setAlert({ title: 'Booking unavailable', message: 'Booking is temporarily unavailable for this show.' });
       return;
     }
@@ -454,8 +455,38 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
     await fetch('/api/bookings/release', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ holdId, showId: show.showId })
+      body: JSON.stringify({ holdId, showId: currentShow.showId })
     }).catch(() => undefined);
+  }
+
+  async function refreshSeatLayout() {
+    const response = await fetch(`/api/shows/${encodeURIComponent(currentShow.showId)}/seats`, {
+      cache: 'no-store',
+      headers: { accept: 'application/json' }
+    });
+    if (!response.ok) {
+      router.refresh();
+      return false;
+    }
+    const payload = await response.json() as BookingShowDetail;
+    setCurrentShow(payload);
+    return true;
+  }
+
+  async function clearSelectionAndRefreshSeats() {
+    setSelected([]);
+    setHoldExpiresAt(null);
+    return refreshSeatLayout();
+  }
+
+  function isSeatConflictPayload(payload: Record<string, unknown>, response: Response) {
+    const code = String(payload.code ?? payload.error ?? '').toUpperCase();
+    const message = String(payload.message ?? payload.error ?? '').toUpperCase();
+    return response.status === 409 && (
+      code === 'SEAT_NOT_AVAILABLE'
+      || message.includes('SEAT_NOT_AVAILABLE')
+      || message.includes('SEAT')
+    );
   }
 
   async function startPayment() {
@@ -471,10 +502,10 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'idempotency-key': `hold-${show.showId}-${selected.join('-')}-${Date.now()}`
+          'idempotency-key': `hold-${currentShow.showId}-${selected.join('-')}-${Date.now()}`
         },
         body: JSON.stringify({
-          showId: show.showId,
+          showId: currentShow.showId,
           seatIds: selected,
           customerName: email || undefined
         })
@@ -492,10 +523,15 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
           return;
         }
 
+        const refreshedSeats = isSeatConflictPayload(payload, response)
+          ? await clearSelectionAndRefreshSeats()
+          : false;
         setMessage(null);
         setAlert({
           title: 'Seats unavailable',
-          message: payload.message ?? payload.error ?? 'Your selected seats are no longer available. Please choose again.'
+          message: refreshedSeats
+            ? `${payload.message ?? payload.error ?? 'Your selected seats are no longer available.'} The seat layout has been refreshed. Please choose again.`
+            : payload.message ?? payload.error ?? 'Your selected seats are no longer available. Please choose again.'
         });
         setProgressPhase(null);
         return;
@@ -509,7 +545,7 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           holdId: payload.holdId,
-          showId: show.showId,
+          showId: currentShow.showId,
           channel: 'PUBLIC'
         })
       });
@@ -552,12 +588,12 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
         amount: orderPayload.amount,
         currency: orderPayload.currency,
         name: 'KSFDC Tickets',
-        description: `${show.movieTitle} - ${selected.join(', ')}`,
+        description: `${currentShow.movieTitle} - ${selected.join(', ')}`,
         order_id: orderPayload.orderId,
         prefill: { email },
         notes: {
           holdId: payload.holdId,
-          showId: show.showId
+          showId: currentShow.showId
         },
         handler: async (razorpayResponse: Record<string, string>) => {
           setProgressPhase('PAYMENT_SUCCESS');
@@ -611,7 +647,7 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
   }
 
   async function proceed() {
-    if (show.bookingEnabled === false) {
+    if (currentShow.bookingEnabled === false) {
       setAlert({ title: 'Booking unavailable', message: 'Booking is temporarily unavailable for this show.' });
       return;
     }
@@ -723,7 +759,7 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
   return (
     <SeatSelectionLayout>
       <BookMyShowStyleSeatMap
-        show={show}
+        show={currentShow}
         selected={selected}
         disabled={isPending || Boolean(holdExpiresAt)}
         holdActive={Boolean(holdExpiresAt)}
@@ -735,7 +771,7 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
         count={selected.length}
         total={total}
         holdLabel={holdRemainingLabel}
-        disabled={show.bookingEnabled === false || !selected.length || isPending}
+        disabled={currentShow.bookingEnabled === false || !selected.length || isPending}
         pending={isPending}
         message={message}
         onProceed={proceed}
