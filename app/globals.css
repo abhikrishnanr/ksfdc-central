@@ -3460,7 +3460,7 @@ body:has(.checker-login-page) .page-frame { width: 100%; max-width: none; paddin
 
 .public-header-utilities {
   display: grid;
-  grid-template-columns: minmax(145px, 180px) minmax(220px, 420px) auto auto;
+  grid-template-columns: minmax(145px, 180px) minmax(220px, 420px) auto auto auto;
   justify-content: end;
   align-items: center;
   gap: 0.55rem;
@@ -3894,4 +3894,574 @@ body:has(.checker-login-page) .page-frame { width: 100%; max-width: none; paddin
   .ticket-qr-modal-card { width: 100%; min-height: 100dvh; max-height: 100dvh; border: 0; border-radius: 0; padding: 4.25rem 1rem 1.5rem; }
   .ticket-qr-modal-card > img { width: min(88vw, 430px); }
   .midnight-show-banner { align-items: flex-start; }
+}
+
+/* Theme switcher */
+.theme-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  min-height: 2.4rem;
+  border: 1px solid rgba(255, 200, 87, 0.45);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  color: #fff4d6;
+  background: rgba(255, 200, 87, 0.08);
+  font-weight: 850;
+  line-height: 1;
+}
+
+.theme-toggle-button:hover {
+  color: #07161b;
+  background: var(--portal-marigold);
+}
+
+.theme-toggle-button span {
+  font-size: 0.82rem;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f8f5;
+  --bg-2: #eaf2ef;
+  --panel: rgba(255, 255, 255, 0.92);
+  --panel-strong: rgba(255, 255, 255, 0.98);
+  --line: rgba(10, 36, 34, 0.14);
+  --line-strong: rgba(10, 36, 34, 0.24);
+  --text: #10201f;
+  --muted: #435857;
+  --faint: #687a79;
+  --emerald: #057a5f;
+  --teal: #056b80;
+  --blue: #1d4ed8;
+  --violet: #6d28d9;
+  --amber: #9a5a00;
+  --danger: #b42336;
+  --portal-ink: #f6fbf8;
+  --portal-ink-raised: #ffffff;
+  --portal-lagoon: #04785f;
+  --portal-lagoon-dark: #065f4f;
+  --portal-marigold: #a76100;
+  --portal-coral: #b73324;
+}
+
+html[data-theme="light"],
+[data-theme="light"] body {
+  background: #f5f8f5;
+}
+
+[data-theme="light"] body {
+  color: var(--text);
+  background:
+    linear-gradient(135deg, rgba(4, 120, 95, 0.08), transparent 32%),
+    linear-gradient(220deg, rgba(167, 97, 0, 0.08), transparent 36%),
+    #f5f8f5;
+}
+
+[data-theme="light"] body::before {
+  background-image:
+    linear-gradient(rgba(7, 22, 27, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(7, 22, 27, 0.04) 1px, transparent 1px);
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.34), transparent 78%);
+}
+
+[data-theme="light"] p,
+[data-theme="light"] .brand-subtitle,
+[data-theme="light"] .page-header > p:not(.eyebrow),
+[data-theme="light"] .premium-card > p,
+[data-theme="light"] .glass-panel > p,
+[data-theme="light"] .public-booking-topbar span,
+[data-theme="light"] .movie-detail-layout p,
+[data-theme="light"] .movie-booking-page p,
+[data-theme="light"] .public-booking-page p {
+  color: #435857;
+}
+
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+  color: #10201f;
+  border-color: rgba(10, 36, 34, 0.18);
+  background: #ffffff;
+}
+
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: #667a78;
+}
+
+[data-theme="light"] .public-topbar,
+[data-theme="light"] .topbar {
+  border-bottom-color: rgba(7, 93, 77, 0.18);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 32px rgba(10, 36, 34, 0.11);
+}
+
+[data-theme="light"] .public-header-navrow {
+  border-top-color: rgba(10, 36, 34, 0.1);
+}
+
+[data-theme="light"] .brand-title,
+[data-theme="light"] .public-brand .brand-title {
+  color: #10201f;
+}
+
+[data-theme="light"] .public-brand .brand-subtitle,
+[data-theme="light"] .brand-subtitle {
+  color: #526664;
+}
+
+[data-theme="light"] .public-nav a,
+[data-theme="light"] .public-partner-actions > a,
+[data-theme="light"] .public-partner-actions > label,
+[data-theme="light"] .nav-pill {
+  color: #203331;
+}
+
+[data-theme="light"] .public-nav a:hover,
+[data-theme="light"] .nav-pill:hover {
+  color: #053f35;
+  background: rgba(4, 120, 95, 0.1);
+}
+
+[data-theme="light"] .public-nav a.active {
+  color: #8a3f00;
+  box-shadow: inset 0 -3px 0 #a76100;
+}
+
+[data-theme="light"] .public-header-utilities .city-select,
+[data-theme="light"] .public-header-utilities .public-search,
+[data-theme="light"] .public-header-utilities .header-icon-button,
+[data-theme="light"] .mobile-menu-button,
+[data-theme="light"] .theme-toggle-button {
+  color: #065f4f;
+  border-color: rgba(7, 93, 77, 0.22);
+  background: #eef7f4;
+}
+
+[data-theme="light"] .public-header-utilities {
+  grid-template-columns: minmax(145px, 180px) minmax(220px, 420px) auto auto auto;
+}
+
+[data-theme="light"] .public-header-utilities .city-select select,
+[data-theme="light"] .public-header-utilities .public-search input {
+  color: #10201f;
+}
+
+[data-theme="light"] .login-signup-button,
+[data-theme="light"] .public-header-utilities .login-signup-button,
+[data-theme="light"] .public-partner-actions .theatre-login-link {
+  color: #083f35;
+  border-color: rgba(167, 97, 0, 0.36);
+  background: #fff6df;
+}
+
+[data-theme="light"] .theme-toggle-button:hover,
+[data-theme="light"] .theme-toggle-button:focus-visible {
+  color: #ffffff;
+  background: #065f4f;
+}
+
+[data-theme="light"] .search-suggestions,
+[data-theme="light"] .account-dropdown {
+  border-color: rgba(10, 36, 34, 0.16);
+  background: #ffffff;
+  box-shadow: 0 18px 46px rgba(10, 36, 34, 0.16);
+}
+
+[data-theme="light"] .search-suggestions button,
+[data-theme="light"] .account-dropdown a,
+[data-theme="light"] .account-dropdown button {
+  color: #10201f;
+  background: transparent;
+}
+
+[data-theme="light"] .search-suggestions button.active,
+[data-theme="light"] .search-suggestions button:hover,
+[data-theme="light"] .account-dropdown a:hover,
+[data-theme="light"] .account-dropdown button:hover {
+  color: #043f36;
+  background: #e8f6f2;
+}
+
+[data-theme="light"] .search-suggestions small,
+[data-theme="light"] .account-dropdown small {
+  color: #566b69;
+}
+
+[data-theme="light"] .hero-panel,
+[data-theme="light"] .premium-card,
+[data-theme="light"] .glass-panel,
+[data-theme="light"] .movie-show-section,
+[data-theme="light"] .movie-booking-mini,
+[data-theme="light"] .public-show-row,
+[data-theme="light"] .public-info-card,
+[data-theme="light"] .theatre-show-card,
+[data-theme="light"] .same-day-showtimes,
+[data-theme="light"] .movie-detail-book-bar,
+[data-theme="light"] .quick-book-card,
+[data-theme="light"] .side-info-card,
+[data-theme="light"] .feature-strip,
+[data-theme="light"] .supporting-cinema-banner,
+[data-theme="light"] .poster-movie-card,
+[data-theme="light"] .ticket-history-card,
+[data-theme="light"] .ticket-history-empty,
+[data-theme="light"] .empty-state,
+[data-theme="light"] .table-shell,
+[data-theme="light"] .date-tab-bar a,
+[data-theme="light"] .public-movie-card,
+[data-theme="light"] .bms-seat-map-shell {
+  color: #10201f;
+  border-color: rgba(10, 36, 34, 0.14);
+  background: #ffffff;
+  box-shadow: 0 16px 42px rgba(10, 36, 34, 0.11);
+}
+
+[data-theme="light"] .page-header h1,
+[data-theme="light"] .premium-card h1,
+[data-theme="light"] .premium-card h2,
+[data-theme="light"] .glass-panel h2,
+[data-theme="light"] .section-title-row h2,
+[data-theme="light"] .movie-detail-layout h1,
+[data-theme="light"] .movie-detail-layout h2,
+[data-theme="light"] .movie-detail-layout h3,
+[data-theme="light"] .movie-booking-page h1,
+[data-theme="light"] .movie-booking-page h2,
+[data-theme="light"] .movie-booking-page h3,
+[data-theme="light"] .public-booking-page h1,
+[data-theme="light"] .public-booking-page h2,
+[data-theme="light"] .public-booking-page h3,
+[data-theme="light"] .ticket-history-title h2,
+[data-theme="light"] .ticket-history-footer > strong,
+[data-theme="light"] .ticket-history-empty h2 {
+  color: #10201f;
+}
+
+[data-theme="light"] .eyebrow,
+[data-theme="light"] .public-eyebrow,
+[data-theme="light"] .section-title-row a,
+[data-theme="light"] .ticket-history-kicker {
+  color: #8a3f00;
+}
+
+[data-theme="light"] .quick-book-card label,
+[data-theme="light"] .ticket-history-tabs,
+[data-theme="light"] .metric-tile,
+[data-theme="light"] .person-pill,
+[data-theme="light"] .public-chip,
+[data-theme="light"] .action-button,
+[data-theme="light"] .date-tab-bar a {
+  color: #10201f;
+  border-color: rgba(10, 36, 34, 0.14);
+  background: #f5faf8;
+}
+
+[data-theme="light"] .quick-book-card label > span,
+[data-theme="light"] .quick-book-card h2 span,
+[data-theme="light"] .side-card-title svg,
+[data-theme="light"] .ticket-history-meta svg,
+[data-theme="light"] .ticket-history-tabs button svg {
+  color: #04785f;
+}
+
+[data-theme="light"] .quick-book-card select,
+[data-theme="light"] .quick-book-card input {
+  color: #10201f;
+}
+
+[data-theme="light"] .gold-button,
+[data-theme="light"] .action-button.primary,
+[data-theme="light"] .date-tab-bar a.active,
+[data-theme="light"] .ticket-history-tabs button.active {
+  color: #ffffff;
+  background: #8a3f00;
+}
+
+[data-theme="light"] .gold-button:hover,
+[data-theme="light"] .action-button.primary:hover {
+  color: #ffffff;
+  background: #6f3300;
+}
+
+[data-theme="light"] .outline-gold-button,
+[data-theme="light"] .book-now-outline {
+  color: #064e42;
+  border-color: rgba(4, 120, 95, 0.34);
+  background: #e8f6f2;
+}
+
+[data-theme="light"] .outline-gold-button:hover,
+[data-theme="light"] .book-now-outline:hover {
+  color: #ffffff;
+  background: #065f4f;
+}
+
+[data-theme="light"] .public-chip.strong,
+[data-theme="light"] .ticket-history-status.confirmed {
+  color: #064e42;
+  border-color: rgba(4, 120, 95, 0.28);
+  background: #e6f7f2;
+}
+
+[data-theme="light"] .ticket-history-tabs button {
+  color: #435857;
+}
+
+[data-theme="light"] .ticket-history-tabs button b {
+  color: #ffffff;
+  background: #58716e;
+}
+
+[data-theme="light"] .ticket-history-tabs button.active b {
+  color: #10201f;
+  background: #fff2c2;
+}
+
+[data-theme="light"] .ticket-history-meta span,
+[data-theme="light"] .ticket-history-status {
+  color: #435857;
+}
+
+[data-theme="light"] .public-booking-topbar {
+  color: #10201f;
+  border-color: rgba(10, 36, 34, 0.16);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+[data-theme="light"] .booking-unavailable-panel,
+[data-theme="light"] .booking-alert-modal,
+[data-theme="light"] .midnight-show-banner {
+  color: #10201f;
+  border-color: rgba(167, 97, 0, 0.28);
+  background: #fff8e8;
+  box-shadow: 0 18px 48px rgba(10, 36, 34, 0.12);
+}
+
+[data-theme="light"] .booking-unavailable-panel h2,
+[data-theme="light"] .booking-alert-modal h2,
+[data-theme="light"] .midnight-show-banner strong {
+  color: #10201f;
+}
+
+[data-theme="light"] .midnight-show-banner span,
+[data-theme="light"] .booking-alert-modal p {
+  color: #435857;
+}
+
+[data-theme="light"] .showtime-chip,
+[data-theme="light"] .showtime-chip.dark {
+  color: #ffffff;
+  border-color: #04785f;
+  background: #065f4f;
+  box-shadow: 0 7px 18px rgba(4, 120, 95, 0.18);
+}
+
+[data-theme="light"] .showtime-chip em {
+  color: #ffdf8a;
+}
+
+[data-theme="light"] .showtime-chip small,
+[data-theme="light"] .showtime-chip.dark small {
+  color: #effffb;
+}
+
+[data-theme="light"] .showtime-chip:hover,
+[data-theme="light"] .showtime-chip.dark:hover {
+  color: #ffffff;
+  border-color: #8a3f00;
+  background: #074338;
+}
+
+[data-theme="light"] .showtime-chip.disabled,
+[data-theme="light"] .showtime-chip.dark.disabled {
+  color: #364947;
+  border-color: #aebfbd;
+  background: #e6ecea;
+}
+
+[data-theme="light"] .showtime-chip.disabled em,
+[data-theme="light"] .showtime-chip.dark.disabled em {
+  color: #8a3f00;
+}
+
+[data-theme="light"] .showtime-chip.disabled small,
+[data-theme="light"] .showtime-chip.dark.disabled small {
+  color: #4e615f;
+}
+
+[data-theme="light"] .seat-shell,
+[data-theme="light"] .public-seat-shell,
+[data-theme="light"] .unified-seat-shell {
+  color: #10201f;
+  border-color: rgba(10, 36, 34, 0.14);
+  background: #ffffff;
+}
+
+[data-theme="light"] .unified-seat-viewport,
+[data-theme="light"] .seat-map-stage.public {
+  background: #f7faf8;
+}
+
+[data-theme="light"] .screen-banner,
+[data-theme="light"] .screen-banner.light,
+[data-theme="light"] .unified-screen span {
+  color: #10201f;
+  border-color: rgba(4, 120, 95, 0.32);
+  background: linear-gradient(90deg, transparent, rgba(4, 120, 95, 0.14), transparent);
+}
+
+[data-theme="light"] .seat-button.public,
+[data-theme="light"] .seat-button {
+  color: #10201f;
+}
+
+[data-theme="light"] .seat-sold {
+  color: #7f1d1d;
+  background: #f2d7d5;
+}
+
+[data-theme="light"] .seat-held {
+  color: #764500;
+  background: #fff0c2;
+}
+
+[data-theme="light"] .seat-blocked {
+  color: #4b5563;
+  background: #e5e7eb;
+}
+
+[data-theme="light"] .seat-selected {
+  color: #ffffff;
+  background: #04785f;
+}
+
+[data-theme="light"] .seat-map-toolbar button,
+[data-theme="light"] .seat-map-toolbar span {
+  color: #10201f;
+  border-color: rgba(10, 36, 34, 0.18);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+[data-theme="light"] .public-footer,
+[data-theme="light"] .mobile-nav-drawer,
+[data-theme="light"] .mobile-drawer-header,
+[data-theme="light"] .mobile-drawer-footer {
+  color: #10201f;
+  border-color: rgba(10, 36, 34, 0.12);
+  background: #ffffff;
+}
+
+[data-theme="light"] .mobile-drawer-backdrop.open {
+  background: rgba(10, 36, 34, 0.35);
+}
+
+[data-theme="light"] .mobile-drawer-nav a,
+[data-theme="light"] .mobile-drawer-footer > a,
+[data-theme="light"] .mobile-drawer-footer > span,
+[data-theme="light"] .mobile-drawer-footer > button,
+[data-theme="light"] .mobile-drawer-tools label {
+  color: #10201f;
+  border-color: rgba(10, 36, 34, 0.14);
+  background: #f5faf8;
+}
+
+[data-theme="light"] .mobile-drawer-nav a.active {
+  border-color: rgba(167, 97, 0, 0.34);
+  background: #fff3d0;
+}
+
+[data-theme="light"] .mobile-drawer-nav small,
+[data-theme="light"] .mobile-drawer-header .brand-subtitle {
+  color: #526664;
+}
+
+[data-theme="light"] .drawer-close-button {
+  color: #10201f;
+  background: #edf5f2;
+}
+
+[data-theme="light"] .role-login-page,
+[data-theme="light"] .checker-login-page,
+[data-theme="light"] .ticket-checker-page {
+  color: #10201f;
+  border-color: rgba(10, 36, 34, 0.14);
+  background: #ffffff;
+}
+
+[data-theme="light"] .role-login-welcome,
+[data-theme="light"] .checker-login-intro {
+  background: linear-gradient(145deg, rgba(4,120,95,0.1), rgba(167,97,0,0.08)), #f3faf7;
+}
+
+[data-theme="light"] .role-login-welcome h1,
+[data-theme="light"] .checker-login-intro h1,
+[data-theme="light"] .role-login-form h2,
+[data-theme="light"] .checker-login-form h2 {
+  color: #10201f;
+}
+
+[data-theme="light"] .role-login-welcome > p:not(.eyebrow),
+[data-theme="light"] .role-login-form p,
+[data-theme="light"] .checker-login-form small {
+  color: #435857;
+}
+
+[data-theme="light"] .role-login-form,
+[data-theme="light"] .checker-login-form,
+[data-theme="light"] .checker-setup-panel,
+[data-theme="light"] .checker-result-panel,
+[data-theme="light"] .checker-scanner-panel,
+[data-theme="light"] .checker-topbar,
+[data-theme="light"] .checker-show-strip,
+[data-theme="light"] .attendance-table-wrap,
+[data-theme="light"] .attendance-empty-state {
+  color: #10201f;
+  background: #ffffff;
+}
+
+[data-theme="light"] .role-login-form label,
+[data-theme="light"] .checker-login-form label,
+[data-theme="light"] .checker-selector-grid label {
+  color: #203331;
+}
+
+[data-theme="light"] .role-login-form input,
+[data-theme="light"] .checker-login-form input,
+[data-theme="light"] .checker-selector-grid select,
+[data-theme="light"] .checker-selector-grid input,
+[data-theme="light"] .checker-manual-entry input {
+  color: #10201f;
+  border-color: rgba(10, 36, 34, 0.18);
+  background: #f7faf8;
+}
+
+[data-theme="light"] .checker-topbar nav a,
+[data-theme="light"] .checker-topbar nav button,
+[data-theme="light"] .checker-show-strip button,
+[data-theme="light"] .checker-camera-button,
+[data-theme="light"] .checker-image-button {
+  color: #10201f;
+  border-color: rgba(10, 36, 34, 0.14);
+  background: #eef7f4;
+}
+
+[data-theme="light"] .checker-primary-button,
+[data-theme="light"] .checker-start-button,
+[data-theme="light"] .checker-next-button,
+[data-theme="light"] .checker-layout-button,
+[data-theme="light"] .attendance-summary button {
+  color: #ffffff;
+  background: #8a3f00;
+}
+
+[data-theme="light"] .checker-camera,
+[data-theme="light"] .checker-image-preview {
+  color: #526664;
+  background: #eef3f1;
+}
+
+[data-theme="light"] body:has(.ticket-checker-page),
+[data-theme="light"] body:has(.checker-login-page) {
+  background: #f5f8f5;
 }

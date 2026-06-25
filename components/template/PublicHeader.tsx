@@ -22,6 +22,7 @@ import {
   X
 } from 'lucide-react';
 import { getOfficialNavigation, getPublicNavigation } from '../../lib/navigation';
+import ThemeToggle from './ThemeToggle';
 
 type AuthState = { authenticated?: boolean; user?: { email?: string } };
 type Suggestion = { id: string; type: 'Movie' | 'Theatre'; label: string; detail: string; href: string };
@@ -212,6 +213,7 @@ export default function PublicHeader() {
             {searchOpen ? suggestionList : null}
           </div>
             <button className="header-icon-button" type="button" aria-label="Notifications"><Bell size={18} /></button>
+            <ThemeToggle />
           {auth.authenticated ? (
             <div className="account-menu">
               <button type="button" className="avatar-button" onClick={() => setAccountOpen((value) => !value)}>
@@ -260,6 +262,7 @@ export default function PublicHeader() {
             </label>
             {searchOpen ? suggestionList : null}
             <label className="drawer-select"><MapPin size={19} /><select value={city} onChange={(event) => updateCity(event.target.value)}>{cityOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+            <ThemeToggle />
           </div>
 
           <nav className="mobile-drawer-nav" aria-label="Mobile navigation">
@@ -294,6 +297,7 @@ export default function PublicHeader() {
       </Link>
       {pathname === '/admin/login' ? null : (
         <nav className="topnav" aria-label="Theatre official navigation">
+          <ThemeToggle />
           {nav.map((item) => item.href === '/admin/logout'
             ? <button className="nav-pill" key={item.href} type="button" onClick={officialLogout}>{item.label}</button>
             : <Link className="nav-pill" key={item.href} href={item.href}>{item.label}</Link>)}

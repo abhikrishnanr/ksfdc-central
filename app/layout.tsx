@@ -7,7 +7,23 @@ import './globals.css';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="dark" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var stored = localStorage.getItem('ksfdc-theme');
+                var theme = stored === 'light' || stored === 'dark'
+                  ? stored
+                  : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+                document.documentElement.dataset.theme = theme;
+                document.documentElement.style.colorScheme = theme;
+              } catch (_) {}
+            `
+          }}
+        />
+      </head>
       <body>
         <NavigationWarmup />
         <div className="app-shell">
