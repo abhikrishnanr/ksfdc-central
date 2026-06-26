@@ -108,6 +108,12 @@ function mysqlDateTime(value: Date) {
   return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())} ${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`;
 }
 
+function serializeDateTime(value: unknown) {
+  if (!value) return null;
+  if (value instanceof Date) return mysqlDateTime(value);
+  return String(value);
+}
+
 function parseLocalDateTime(dateValue: unknown, timeValue: unknown, field: string) {
   const date = stringValue(dateValue, `${field} date`, 20);
   const time = stringValue(timeValue, `${field} time`, 20);
@@ -551,6 +557,128 @@ async function queueScheduleEvent(connection: PoolConnection, input: {
   return eventId;
 }
 
+async function queueScheduleEventForTheatres(connection: PoolConnection, input: {
+  theatreIds?: string[];
+  entityType: string;
+  entityId: string;
+  eventType: string;
+  payload: Record<string, unknown>;
+  requiresAck?: boolean;
+}) {
+  const theatreIds = input.theatreIds?.length
+    ? input.theatreIds
+    : (await connection.query<RowDataPacket[]>("SELECT id FROM theatres WHERE status IN ('ACTIVE','INACTIVE')"))[0].map((row) => String(row.id));
+  for (const theatreId of theatreIds) {
+    await queueScheduleEvent(connection, { ...input, theatreId });
+  }
+}
+
+function parseJsonColumn(value: unknown) {
+  if (value == null) return null;
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function dateOnly(value: unknown) {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value).slice(0, 10);
+}
+
+function moviePayloadFromRow(row: RowDataPacket | Record<string, unknown>) {
+  return {
+    movieId: String(row.movieId ?? row.id ?? ''),
+    title: String(row.movieTitle ?? row.title ?? ''),
+    language: row.movieLanguage ?? row.language ?? null,
+    durationMinutes: row.movieDurationMinutes ?? row.durationMinutes ?? null,
+    certificate: row.movieCertificate ?? row.certificate ?? null,
+    releaseDate: dateOnly(row.movieReleaseDate ?? row.releaseDate),
+    posterUrl: row.moviePosterUrl ?? row.posterUrl ?? null,
+    genreJson: parseJsonColumn(row.movieGenreJson ?? row.genreJson),
+    formatsJson: parseJsonColumn(row.movieFormatsJson ?? row.formatsJson),
+    status: row.movieStatus ?? row.status ?? 'ACTIVE'
+  };
+}
+
+function layoutPayloadFromRow(row: RowDataPacket | Record<string, unknown>) {
+  const seatMap = parseJsonColumn(row.layoutJson);
+  return {
+    layoutId: String(row.layoutId ?? row.id ?? ''),
+    name: row.layoutName ?? row.name ?? null,
+    screenSideLabel: row.screenSideLabel ?? 'SCREEN THIS SIDE',
+    versionNo: Number(row.layoutVersionNo ?? row.versionNo ?? 1),
+    seatCount: Number(row.layoutSeatCount ?? row.seatCount ?? 0),
+    fingerprint: row.layoutFingerprint ?? row.fingerprint ?? null,
+    seatMap
+  };
+}
+
+async function readShowSchedulePayload(connection: PoolConnection, showId: string) {
+  const [[show]] = await connection.query<RowDataPacket[]>(
+    `SELECT s.id AS showId, s.movie_id AS movieId, s.theatre_id AS theatreId,
+            s.screen_id AS screenId, sc.code AS screenCode, sc.name AS screenName,
+            s.layout_id AS layoutId, s.show_time AS showTime, s.show_end_time AS showEndTime,
+            s.booking_opens_at AS bookingOpensAt, s.booking_closes_at AS bookingClosesAt,
+            s.cleaning_buffer_minutes AS cleaningBufferMinutes, s.authority_mode AS authorityMode,
+            s.status, s.reschedule_count AS rescheduleCount, s.cancelled_at AS cancelledAt,
+            s.cancellation_reason AS cancellationReason,
+            m.title AS movieTitle, m.language AS movieLanguage, m.duration_minutes AS movieDurationMinutes,
+            m.certificate AS movieCertificate, m.release_date AS movieReleaseDate,
+            m.poster_url AS moviePosterUrl, m.genre_json AS movieGenreJson,
+            m.formats_json AS movieFormatsJson, m.status AS movieStatus,
+            l.name AS layoutName, l.screen_side_label AS screenSideLabel,
+            l.version_no AS layoutVersionNo, l.seat_count AS layoutSeatCount,
+            l.fingerprint AS layoutFingerprint, l.layout_json AS layoutJson
+     FROM shows s
+     JOIN movies m ON m.id = s.movie_id
+     JOIN screens sc ON sc.id = s.screen_id
+     JOIN seat_layouts l ON l.id = s.layout_id
+     WHERE s.id = ?
+     LIMIT 1`,
+    [showId]
+  );
+  if (!show) throw new AdminManagementError('NOT_FOUND', 'Show not found.', 404);
+  const [priceRows] = await connection.query<RowDataPacket[]>(
+    'SELECT zone_code AS zone, amount FROM show_pricing WHERE show_id = ? ORDER BY amount DESC, zone_code ASC',
+    [showId]
+  );
+  const layout = layoutPayloadFromRow(show);
+  return {
+    showId: String(show.showId),
+    movieId: String(show.movieId),
+    movie: moviePayloadFromRow(show),
+    movieTitle: String(show.movieTitle),
+    theatreId: String(show.theatreId),
+    screenId: String(show.screenId),
+    screen: {
+      screenId: String(show.screenId),
+      code: String(show.screenCode ?? show.screenId),
+      name: String(show.screenName)
+    },
+    screenName: String(show.screenName),
+    layoutId: String(show.layoutId),
+    layout,
+    seatMap: layout.seatMap,
+    start: serializeDateTime(show.showTime),
+    end: serializeDateTime(show.showEndTime),
+    showTime: serializeDateTime(show.showTime),
+    showEndTime: serializeDateTime(show.showEndTime),
+    bookingOpensAt: serializeDateTime(show.bookingOpensAt),
+    bookingClosesAt: serializeDateTime(show.bookingClosesAt),
+    cleaningBufferMinutes: Number(show.cleaningBufferMinutes ?? 20),
+    authorityMode: String(show.authorityMode),
+    status: String(show.status),
+    rescheduleCount: Number(show.rescheduleCount ?? 0),
+    cancelledAt: serializeDateTime(show.cancelledAt),
+    cancellationReason: show.cancellationReason ?? null,
+    prices: priceRows.map((row) => ({ zone: String(row.zone), amount: Number(row.amount) }))
+  };
+}
+
 async function currentHeartbeatForAdmin(connection: Queryable, theatreId: string) {
   const [[heartbeat]] = await connection.query<RowDataPacket[]>(
     `SELECT theatre_id AS theatreId, status, trusted_for_admin_sync AS trusted,
@@ -783,11 +911,31 @@ export async function createTheatre(session: CentralSession, input: Record<strin
   const code = stringValue(input.code, 'Theatre code', 30);
   const name = stringValue(input.name, 'Theatre name', 150);
   const city = stringValue(input.city, 'City', 100);
-  await getCentralDbPool().query(
-    `INSERT INTO theatres (id, code, name, city, status, address, contact_phone, timezone)
-     VALUES (?, ?, ?, ?, 'ACTIVE', ?, ?, ?)`,
-    [id, code, name, city, optionalString(input.address), optionalString(input.contactPhone, 40), optionalString(input.timezone, 80) ?? 'Asia/Kolkata']
-  );
+  const address = optionalString(input.address);
+  const contactPhone = optionalString(input.contactPhone, 40);
+  const timezone = optionalString(input.timezone, 80) ?? 'Asia/Kolkata';
+  const connection = await getCentralDbPool().getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.query(
+      `INSERT INTO theatres (id, code, name, city, status, address, contact_phone, timezone)
+       VALUES (?, ?, ?, ?, 'ACTIVE', ?, ?, ?)`,
+      [id, code, name, city, address, contactPhone, timezone]
+    );
+    await queueScheduleEvent(connection, {
+      theatreId: id,
+      entityType: 'THEATRE',
+      entityId: id,
+      eventType: 'THEATRE_CREATED',
+      payload: { theatreId: id, id, code, name, city, status: 'ACTIVE', address, contactPhone, timezone }
+    });
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
   await writeCentralAuditLog({ userId: session.userId, role: session.role, action: 'THEATRE_CREATED', entityType: 'THEATRE', entityId: id, metadata: { code, name, city } });
   return { id };
 }
@@ -796,18 +944,34 @@ export async function updateTheatre(session: CentralSession, input: Record<strin
   await ensureAdminManagementSchema();
   const id = stringValue(input.id, 'Theatre ID', 80);
   assertTheatreScope(session, id);
-  await getCentralDbPool().query(
-    `UPDATE theatres SET name = ?, city = ?, status = ?, address = ?, contact_phone = ?, timezone = ? WHERE id = ?`,
-    [
-      stringValue(input.name, 'Theatre name', 150),
-      stringValue(input.city, 'City', 100),
-      boolValue(input.enabled) ? 'ACTIVE' : 'DISABLED',
-      optionalString(input.address),
-      optionalString(input.contactPhone, 40),
-      optionalString(input.timezone, 80) ?? 'Asia/Kolkata',
-      id
-    ]
-  );
+  const name = stringValue(input.name, 'Theatre name', 150);
+  const city = stringValue(input.city, 'City', 100);
+  const status = boolValue(input.enabled) ? 'ACTIVE' : 'DISABLED';
+  const address = optionalString(input.address);
+  const contactPhone = optionalString(input.contactPhone, 40);
+  const timezone = optionalString(input.timezone, 80) ?? 'Asia/Kolkata';
+  const connection = await getCentralDbPool().getConnection();
+  try {
+    await connection.beginTransaction();
+    const [[theatre]] = await connection.query<RowDataPacket[]>('SELECT code FROM theatres WHERE id = ? FOR UPDATE', [id]);
+    await connection.query(
+      `UPDATE theatres SET name = ?, city = ?, status = ?, address = ?, contact_phone = ?, timezone = ? WHERE id = ?`,
+      [name, city, status, address, contactPhone, timezone, id]
+    );
+    await queueScheduleEvent(connection, {
+      theatreId: id,
+      entityType: 'THEATRE',
+      entityId: id,
+      eventType: 'THEATRE_UPDATED',
+      payload: { theatreId: id, id, code: theatre?.code ?? id, name, city, status, address, contactPhone, timezone }
+    });
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
   await writeCentralAuditLog({ userId: session.userId, role: session.role, action: 'THEATRE_UPDATED', entityType: 'THEATRE', entityId: id });
   return { id };
 }
@@ -853,7 +1017,28 @@ export async function createScreenWithSeatMap(session: CentralSession, input: Re
       seatMap,
       userId: session.userId
     });
-    await queueScheduleEvent(connection, { theatreId, entityType: 'SCREEN', entityId: screenId, eventType: 'SCREEN_CREATED', payload: { screenId, code, name, layoutId: layout.layoutId } });
+    await queueScheduleEvent(connection, {
+      theatreId,
+      entityType: 'SCREEN',
+      entityId: screenId,
+      eventType: 'SCREEN_CREATED',
+      payload: {
+        theatreId,
+        screenId,
+        code,
+        name,
+        status: 'ACTIVE',
+        capacity: seatMap.seatCount,
+        layoutId: layout.layoutId,
+        layoutName: optionalString(input.layoutName, 150) ?? seatMap.name,
+        versionNo: layout.versionNo,
+        screenSideLabel: seatMap.screenSideLabel,
+        seatCount: seatMap.seatCount,
+        fingerprint: seatMap.fingerprint,
+        seatMap: seatMap.normalized,
+        sourceFilename: optionalString(input.sourceFilename, 190)
+      }
+    });
     await connection.commit();
     await writeCentralAuditLog({ userId: session.userId, role: session.role, action: 'SCREEN_CREATED', entityType: 'SCREEN', entityId: screenId, metadata: { theatreId, layout } });
     return { id: screenId, layoutId: layout.layoutId };
@@ -871,7 +1056,7 @@ export async function updateScreenSeatMap(session: CentralSession, input: Record
   const connection = await getCentralDbPool().getConnection();
   try {
     await connection.beginTransaction();
-    const [[screen]] = await connection.query<RowDataPacket[]>('SELECT id, theatre_id AS theatreId FROM screens WHERE id = ? FOR UPDATE', [screenId]);
+    const [[screen]] = await connection.query<RowDataPacket[]>('SELECT id, theatre_id AS theatreId, code, name FROM screens WHERE id = ? FOR UPDATE', [screenId]);
     if (!screen) throw new AdminManagementError('NOT_FOUND', 'Screen not found.', 404);
     assertTheatreScope(session, String(screen.theatreId));
     const seatMap = validateSeatMapJson(input.seatMapJson);
@@ -883,7 +1068,27 @@ export async function updateScreenSeatMap(session: CentralSession, input: Record
       seatMap,
       userId: session.userId
     });
-    await queueScheduleEvent(connection, { theatreId: String(screen.theatreId), entityType: 'SCREEN', entityId: screenId, eventType: 'SEAT_MAP_VERSION_CREATED', payload: { screenId, layoutId: layout.layoutId, versionNo: layout.versionNo } });
+    await queueScheduleEvent(connection, {
+      theatreId: String(screen.theatreId),
+      entityType: 'SCREEN',
+      entityId: screenId,
+      eventType: 'SEAT_MAP_VERSION_CREATED',
+      payload: {
+        theatreId: String(screen.theatreId),
+        screenId,
+        code: String(screen.code ?? screenId),
+        name: String(screen.name ?? screenId),
+        layoutId: layout.layoutId,
+        layoutName: optionalString(input.layoutName, 150) ?? seatMap.name,
+        versionNo: layout.versionNo,
+        screenSideLabel: seatMap.screenSideLabel,
+        seatCount: seatMap.seatCount,
+        capacity: seatMap.seatCount,
+        fingerprint: seatMap.fingerprint,
+        seatMap: seatMap.normalized,
+        sourceFilename: optionalString(input.sourceFilename, 190)
+      }
+    });
     await connection.commit();
     await writeCentralAuditLog({ userId: session.userId, role: session.role, action: 'SEAT_MAP_VERSION_CREATED', entityType: 'SCREEN', entityId: screenId, metadata: layout });
     return { id: screenId, layoutId: layout.layoutId };
@@ -909,35 +1114,62 @@ export async function upsertMovie(session: CentralSession, input: Record<string,
     sizeBytes: input.posterSizeBytes ? numberValue(input.posterSizeBytes, 'Poster size') : null,
     storage: posterUrl ? 'URL' : 'NONE'
   };
-  await getCentralDbPool().query(
-    `INSERT INTO movies (
-       id, title, language, duration_minutes, certificate, release_date, poster_url,
-       youtube_trailer_url, synopsis, genre_json, formats_json, languages_json, poster_metadata, status
-     )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE
-       title = VALUES(title), language = VALUES(language), duration_minutes = VALUES(duration_minutes),
-       certificate = VALUES(certificate), release_date = VALUES(release_date), poster_url = VALUES(poster_url),
-       youtube_trailer_url = VALUES(youtube_trailer_url), synopsis = VALUES(synopsis),
-       genre_json = VALUES(genre_json), formats_json = VALUES(formats_json), languages_json = VALUES(languages_json),
-       poster_metadata = VALUES(poster_metadata), status = VALUES(status), updated_at = NOW()`,
-    [
-      id,
-      title,
-      optionalString(input.language, 50),
-      input.durationMinutes ? numberValue(input.durationMinutes, 'Duration') : null,
-      optionalString(input.certificate, 20),
-      optionalString(input.releaseDate, 20),
-      posterUrl,
-      optionalString(input.trailerUrl, 1000),
-      optionalString(input.synopsis, 4000),
-      JSON.stringify(String(input.genres ?? '').split(',').map((item) => item.trim()).filter(Boolean)),
-      JSON.stringify(String(input.formats ?? '').split(',').map((item) => item.trim()).filter(Boolean)),
-      JSON.stringify(String(input.languages ?? '').split(',').map((item) => item.trim()).filter(Boolean)),
-      JSON.stringify(posterMetadata),
-      safeStatus
-    ]
-  );
+  const moviePayload = {
+    movieId: id,
+    title,
+    language: optionalString(input.language, 50),
+    durationMinutes: input.durationMinutes ? numberValue(input.durationMinutes, 'Duration') : null,
+    certificate: optionalString(input.certificate, 20),
+    releaseDate: optionalString(input.releaseDate, 20),
+    posterUrl,
+    trailerUrl: optionalString(input.trailerUrl, 1000),
+    synopsis: optionalString(input.synopsis, 4000),
+    genreJson: String(input.genres ?? '').split(',').map((item) => item.trim()).filter(Boolean),
+    formatsJson: String(input.formats ?? '').split(',').map((item) => item.trim()).filter(Boolean),
+    languagesJson: String(input.languages ?? '').split(',').map((item) => item.trim()).filter(Boolean),
+    posterMetadata,
+    status: safeStatus
+  };
+  const connection = await getCentralDbPool().getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.query(
+      `INSERT INTO movies (
+         id, title, language, duration_minutes, certificate, release_date, poster_url,
+         youtube_trailer_url, synopsis, genre_json, formats_json, languages_json, poster_metadata, status
+       )
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         title = VALUES(title), language = VALUES(language), duration_minutes = VALUES(duration_minutes),
+         certificate = VALUES(certificate), release_date = VALUES(release_date), poster_url = VALUES(poster_url),
+         youtube_trailer_url = VALUES(youtube_trailer_url), synopsis = VALUES(synopsis),
+         genre_json = VALUES(genre_json), formats_json = VALUES(formats_json), languages_json = VALUES(languages_json),
+         poster_metadata = VALUES(poster_metadata), status = VALUES(status), updated_at = NOW()`,
+      [
+        id,
+        title,
+        moviePayload.language,
+        moviePayload.durationMinutes,
+        moviePayload.certificate,
+        moviePayload.releaseDate,
+        posterUrl,
+        moviePayload.trailerUrl,
+        moviePayload.synopsis,
+        JSON.stringify(moviePayload.genreJson),
+        JSON.stringify(moviePayload.formatsJson),
+        JSON.stringify(moviePayload.languagesJson),
+        JSON.stringify(posterMetadata),
+        safeStatus
+      ]
+    );
+    await queueScheduleEventForTheatres(connection, { entityType: 'MOVIE', entityId: id, eventType: 'MOVIE_UPSERTED', payload: moviePayload });
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
   await writeCentralAuditLog({ userId: session.userId, role: session.role, action: 'MOVIE_UPSERTED', entityType: 'MOVIE', entityId: id, metadata: { title, status: safeStatus } });
   return { id };
 }
@@ -982,6 +1214,9 @@ export async function createShow(session: CentralSession, input: Record<string, 
     const end = parseMaybeDateTime(input.showEndTime) ?? mysqlDateTime(new Date(new Date(start.replace(' ', 'T')).getTime() + (durationMinutes ?? Number(movie.durationMinutes ?? 150)) * 60_000));
     await assertNoOverlap(connection, { screenId, start, end, bufferMinutes });
     const showId = optionalString(input.id, 80) ?? `SHOW_${slug(screenId)}_${Date.now()}`;
+    const showStatus = String(input.status ?? 'OPEN').toUpperCase() === 'SCHEDULED' ? 'SCHEDULED' : 'OPEN';
+    const bookingOpensAt = parseMaybeDateTime(input.bookingOpensAt);
+    const bookingClosesAt = parseMaybeDateTime(input.bookingClosesAt);
     await connection.query(
       `INSERT INTO shows (
          id, movie_id, theatre_id, screen_id, layout_id, show_time, show_end_time,
@@ -996,16 +1231,23 @@ export async function createShow(session: CentralSession, input: Record<string, 
         layout.id,
         start,
         end,
-        parseMaybeDateTime(input.bookingOpensAt),
-        parseMaybeDateTime(input.bookingClosesAt),
+        bookingOpensAt,
+        bookingClosesAt,
         bufferMinutes,
         authorityMode,
-        String(input.status ?? 'OPEN').toUpperCase() === 'SCHEDULED' ? 'SCHEDULED' : 'OPEN'
+        showStatus
       ]
     );
     await connection.query('INSERT INTO show_pricing (show_id, zone_code, amount) VALUES ?', [prices.map((price) => [showId, price.zone, price.amount])]);
     await writeAuthorityPolicy(connection, showId, authorityMode);
-    await queueScheduleEvent(connection, { theatreId, entityType: 'SHOW', entityId: showId, eventType: 'SHOW_CREATED', payload: { showId, movieId, theatreId, screenId, layoutId: layout.id, start, end, authorityMode, prices }, requiresAck: authorityMode !== 'CENTRAL_AUTHORITY' });
+    await queueScheduleEvent(connection, {
+      theatreId,
+      entityType: 'SHOW',
+      entityId: showId,
+      eventType: 'SHOW_CREATED',
+      payload: await readShowSchedulePayload(connection, showId),
+      requiresAck: authorityMode !== 'CENTRAL_AUTHORITY'
+    });
     await connection.commit();
     await writeCentralAuditLog({ userId: session.userId, role: session.role, action: 'SHOW_CREATED', entityType: 'SHOW', entityId: showId, metadata: { theatreId, screenId, movieId, authorityMode } });
     return { id: showId };
@@ -1077,7 +1319,14 @@ export async function updateShowSchedule(session: CentralSession, input: Record<
       );
       await queueBookingNotifications(connection, showId, 'SHOW_RESCHEDULED', 'Your show time has changed', { previousShowTime: previous.showTime, newShowTime: start, reason });
     }
-    await queueScheduleEvent(connection, { theatreId: String(show.theatre_id), entityType: 'SHOW', entityId: showId, eventType: impact.hasBookingRecords ? 'SHOW_RESCHEDULED' : 'SHOW_UPDATED', payload: { showId, previous, next: { showTime: start, showEndTime: end, authorityMode }, reason }, requiresAck: authorityMode !== 'CENTRAL_AUTHORITY' });
+    await queueScheduleEvent(connection, {
+      theatreId: String(show.theatre_id),
+      entityType: 'SHOW',
+      entityId: showId,
+      eventType: impact.hasBookingRecords ? 'SHOW_RESCHEDULED' : 'SHOW_UPDATED',
+      payload: { ...(await readShowSchedulePayload(connection, showId)), previous, reason },
+      requiresAck: authorityMode !== 'CENTRAL_AUTHORITY'
+    });
     await connection.commit();
     await writeCentralAuditLog({ userId: session.userId, role: session.role, action: impact.hasBookingRecords ? 'SHOW_RESCHEDULED' : 'SHOW_UPDATED', entityType: 'SHOW', entityId: showId, metadata: { impact, reason } });
     return { id: showId, impact };
@@ -1170,7 +1419,14 @@ export async function cancelShow(session: CentralSession, input: Record<string, 
       [showId, session.userId, reason, JSON.stringify({ status: show.status }), JSON.stringify({ status: 'CANCELLED' }), impact.confirmedBookings, impact.tickets]
     );
     await queueBookingNotifications(connection, showId, 'SHOW_CANCELLED', 'Your show has been cancelled', { reason, refundStatus: 'REFUND_PENDING' });
-    await queueScheduleEvent(connection, { theatreId: String(show.theatre_id), entityType: 'SHOW', entityId: showId, eventType: 'SHOW_CANCELLED', payload: { showId, reason }, requiresAck: String(show.authority_mode) !== 'CENTRAL_AUTHORITY' });
+    await queueScheduleEvent(connection, {
+      theatreId: String(show.theatre_id),
+      entityType: 'SHOW',
+      entityId: showId,
+      eventType: 'SHOW_CANCELLED',
+      payload: { ...(await readShowSchedulePayload(connection, showId)), reason },
+      requiresAck: String(show.authority_mode) !== 'CENTRAL_AUTHORITY'
+    });
     await connection.commit();
     await writeCentralAuditLog({ userId: session.userId, role: session.role, action: 'SHOW_CANCELLED', entityType: 'SHOW', entityId: showId, metadata: { impact, reason } });
     return { id: showId, impact };
