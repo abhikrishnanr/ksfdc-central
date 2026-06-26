@@ -55,7 +55,7 @@ export interface SeatMapValidationResult {
   name: string;
   screenSideLabel: string;
   seatCount: number;
-  rows: Array<{ rowLabel: string; cells: NormalizedSeatCell[] }>;
+  rows: Array<{ rowKey: string; rowLabel: string; rowSort: number; isPathway: boolean; cells: NormalizedSeatCell[] }>;
   zones: string[];
   normalized: Record<string, unknown>;
   fingerprint: string;
@@ -90,6 +90,20 @@ function optionalString(value: unknown, max = 500) {
   const text = String(value).trim();
   if (!text) return null;
   return text.slice(0, max);
+}
+
+function idValue(value: unknown, field: string, max = 80) {
+  const text = stringValue(value, field, max);
+  if (!/^[A-Za-z0-9][A-Za-z0-9_.:-]*$/.test(text)) {
+    throw new AdminManagementError('INVALID_ID', `${field} is malformed.`);
+  }
+  return text;
+}
+
+function optionalIdValue(value: unknown, field: string, max = 80) {
+  const text = optionalString(value, max);
+  if (!text) return null;
+  return idValue(text, field, max);
 }
 
 function boolValue(value: unknown) {
@@ -155,6 +169,13 @@ async function addIndexIfMissing(tableName: string, indexName: string, definitio
   );
   if (Number(row.cnt) === 0) {
     await getCentralDbPool().query(`ALTER TABLE ${tableName} ADD ${definition}`);
+  }
+}
+
+function ensureUpdateAffected(result: unknown, label: string) {
+  const header = Array.isArray(result) ? result[0] as ResultSetHeader : result as ResultSetHeader;
+  if (!header || Number(header.affectedRows ?? 0) < 1) {
+    throw new AdminManagementError('NOT_FOUND', `${label} was not found.`, 404);
   }
 }
 
@@ -411,14 +432,21 @@ export function validateSeatMapJson(raw: unknown): SeatMapValidationResult {
 
   const seenSeatIds = new Set<string>();
   const zones = new Set<string>();
-  const normalizedRows: Array<{ rowLabel: string; cells: NormalizedSeatCell[] }> = [];
+  const normalizedRows: SeatMapValidationResult['rows'] = [];
   let seatCount = 0;
 
   rows.forEach((row, rowIndex) => {
     const rowRecord = row && typeof row === 'object' ? row as Record<string, unknown> : {};
-    const rowLabel = normalizedRowLabel(rowRecord.rowLabel ?? rowRecord.label ?? rowRecord.row ?? rowRecord.row_label, String.fromCharCode(65 + rowIndex));
+    const rawRowLabel = rowRecord.rowLabel ?? rowRecord.label ?? rowRecord.row ?? rowRecord.row_label;
     const cells = Array.isArray(rowRecord.cells) ? rowRecord.cells : Array.isArray(rowRecord.seats) ? rowRecord.seats : [];
-    if (!cells.length) return;
+    const rowSort = Number(rowRecord.rowSort ?? rowRecord.sort ?? rowIndex);
+    const isPathway = !cells.length || boolValue(rowRecord.isPathway ?? rowRecord.pathway ?? rowRecord.isAisle);
+    const rowLabel = isPathway && rawRowLabel == null ? '' : normalizedRowLabel(rawRowLabel, String.fromCharCode(65 + rowIndex));
+    const rowKey = optionalString(rowRecord.rowKey ?? rowRecord.id, 80) ?? (rowLabel ? `row-${rowLabel}-${rowIndex}` : `pathway-${rowIndex}`);
+    if (!cells.length) {
+      normalizedRows.push({ rowKey, rowLabel: '', rowSort, isPathway: true, cells: [] });
+      return;
+    }
 
     const normalizedCells: NormalizedSeatCell[] = cells.map((cell, index) => {
       const record: Record<string, unknown> = cell && typeof cell === 'object' ? cell as Record<string, unknown> : { seatNumber: cell };
@@ -441,7 +469,7 @@ export function validateSeatMapJson(raw: unknown): SeatMapValidationResult {
       return {
         seatId,
         rowLabel,
-        rowSort: Number(rowRecord.rowSort ?? rowRecord.sort ?? rowIndex),
+        rowSort,
         seatNumber,
         zoneCode,
         itemType: kind,
@@ -451,7 +479,7 @@ export function validateSeatMapJson(raw: unknown): SeatMapValidationResult {
         accessibility: optionalString(record.accessibility ?? record.accessibilityLabel, 80)
       };
     });
-    normalizedRows.push({ rowLabel, cells: normalizedCells });
+    normalizedRows.push({ rowKey, rowLabel, rowSort, isPathway, cells: normalizedCells });
   });
 
   if (seatCount === 0) throw new AdminManagementError('INVALID_SEAT_MAP_STRUCTURE', 'Seat-map must contain at least one usable seat.');
@@ -848,14 +876,14 @@ export async function listAdminManagementData(theatreScope?: string | null) {
   const scopeSql = theatreScope ? ' WHERE t.id = ?' : '';
   const scopeParams = theatreScope ? [theatreScope] : [];
   const [theatres] = await getCentralDbPool().query<RowDataPacket[]>(
-    `SELECT t.id, t.code, t.name, t.city, t.status, t.address, t.contact_phone AS contactPhone,
+    `SELECT t.id, t.code, t.name, t.city, t.status, t.address, t.contact_phone AS contactPhone, t.timezone,
             COUNT(DISTINCT sc.id) AS screenCount,
             COUNT(DISTINCT s.id) AS showCount
      FROM theatres t
      LEFT JOIN screens sc ON sc.theatre_id = t.id
      LEFT JOIN shows s ON s.theatre_id = t.id
      ${scopeSql}
-     GROUP BY t.id, t.code, t.name, t.city, t.status, t.address, t.contact_phone
+     GROUP BY t.id, t.code, t.name, t.city, t.status, t.address, t.contact_phone, t.timezone
      ORDER BY t.city, t.name`,
     scopeParams
   );
@@ -885,6 +913,7 @@ export async function listAdminManagementData(theatreScope?: string | null) {
             s.screen_id AS screenId, sc.name AS screenName, s.layout_id AS layoutId,
             s.show_time AS showTime, s.show_end_time AS showEndTime, s.authority_mode AS authorityMode,
             s.status, s.booking_opens_at AS bookingOpensAt, s.booking_closes_at AS bookingClosesAt,
+            s.cleaning_buffer_minutes AS cleaningBufferMinutes,
             s.cancelled_at AS cancelledAt, s.cancellation_reason AS cancellationReason,
             COALESCE(b.bookingCount, 0) AS bookingCount,
             COALESCE(i.ticketCount, 0) AS ticketCount,
@@ -907,7 +936,7 @@ export async function listAdminManagementData(theatreScope?: string | null) {
 export async function createTheatre(session: CentralSession, input: Record<string, unknown>) {
   await ensureAdminManagementSchema();
   if (session.role !== 'SUPER_ADMIN') throw new AdminManagementError('FORBIDDEN', 'Only super admins can create theatres.', 403);
-  const id = optionalString(input.id, 50) ?? `THEATRE_${slug(input.code ?? input.name)}`;
+  const id = optionalIdValue(input.id, 'Theatre ID', 50) ?? `THEATRE_${slug(input.code ?? input.name)}`;
   const code = stringValue(input.code, 'Theatre code', 30);
   const name = stringValue(input.name, 'Theatre name', 150);
   const city = stringValue(input.city, 'City', 100);
@@ -942,7 +971,7 @@ export async function createTheatre(session: CentralSession, input: Record<strin
 
 export async function updateTheatre(session: CentralSession, input: Record<string, unknown>) {
   await ensureAdminManagementSchema();
-  const id = stringValue(input.id, 'Theatre ID', 80);
+  const id = idValue(input.id, 'Theatre ID', 50);
   assertTheatreScope(session, id);
   const name = stringValue(input.name, 'Theatre name', 150);
   const city = stringValue(input.city, 'City', 100);
@@ -954,10 +983,12 @@ export async function updateTheatre(session: CentralSession, input: Record<strin
   try {
     await connection.beginTransaction();
     const [[theatre]] = await connection.query<RowDataPacket[]>('SELECT code FROM theatres WHERE id = ? FOR UPDATE', [id]);
-    await connection.query(
+    if (!theatre) throw new AdminManagementError('NOT_FOUND', 'Theatre was not found.', 404);
+    const [result] = await connection.query<ResultSetHeader>(
       `UPDATE theatres SET name = ?, city = ?, status = ?, address = ?, contact_phone = ?, timezone = ? WHERE id = ?`,
       [name, city, status, address, contactPhone, timezone, id]
     );
+    ensureUpdateAffected(result, 'Theatre');
     await queueScheduleEvent(connection, {
       theatreId: id,
       entityType: 'THEATRE',
@@ -979,31 +1010,35 @@ export async function updateTheatre(session: CentralSession, input: Record<strin
 export async function deleteTheatre(session: CentralSession, theatreId: string) {
   await ensureAdminManagementSchema();
   if (session.role !== 'SUPER_ADMIN') throw new AdminManagementError('FORBIDDEN', 'Only super admins can delete theatres.', 403);
+  const id = idValue(theatreId, 'Theatre ID', 50);
   const [[deps]] = await getCentralDbPool().query<RowDataPacket[]>(
     `SELECT
        (SELECT COUNT(*) FROM screens WHERE theatre_id = ?) AS screens,
        (SELECT COUNT(*) FROM shows WHERE theatre_id = ?) AS shows,
        (SELECT COUNT(*) FROM central_bookings b JOIN shows s ON s.id = b.show_id WHERE s.theatre_id = ?) AS bookings`,
-    [theatreId, theatreId, theatreId]
+    [id, id, id]
   );
   if (Number(deps.screens) || Number(deps.shows) || Number(deps.bookings)) {
     throw new AdminManagementError('PROTECTED_RECORD', 'Theatre has dependent screens, shows, or bookings. Disable it instead.', 409, deps);
   }
-  await getCentralDbPool().query('DELETE FROM theatres WHERE id = ?', [theatreId]);
-  await writeCentralAuditLog({ userId: session.userId, role: session.role, action: 'THEATRE_DELETED', entityType: 'THEATRE', entityId: theatreId });
+  const [result] = await getCentralDbPool().query<ResultSetHeader>('DELETE FROM theatres WHERE id = ?', [id]);
+  ensureUpdateAffected(result, 'Theatre');
+  await writeCentralAuditLog({ userId: session.userId, role: session.role, action: 'THEATRE_DELETED', entityType: 'THEATRE', entityId: id });
 }
 
 export async function createScreenWithSeatMap(session: CentralSession, input: Record<string, unknown>) {
   await ensureAdminManagementSchema();
-  const theatreId = stringValue(input.theatreId, 'Theatre ID', 80);
+  const theatreId = idValue(input.theatreId, 'Theatre ID', 50);
   assertTheatreScope(session, theatreId);
-  const screenId = optionalString(input.id, 80) ?? `SCREEN_${slug(theatreId)}_${slug(input.code ?? input.name)}`;
+  const screenId = optionalIdValue(input.id, 'Screen ID', 50) ?? `SCREEN_${slug(theatreId)}_${slug(input.code ?? input.name)}`;
   const code = stringValue(input.code, 'Screen code', 30);
   const name = stringValue(input.name, 'Screen name', 100);
   const seatMap = validateSeatMapJson(input.seatMapJson);
   const connection = await getCentralDbPool().getConnection();
   try {
     await connection.beginTransaction();
+    const [[theatre]] = await connection.query<RowDataPacket[]>('SELECT id FROM theatres WHERE id = ? FOR UPDATE', [theatreId]);
+    if (!theatre) throw new AdminManagementError('NOT_FOUND', 'Theatre was not found.', 404);
     await connection.query(
       `INSERT INTO screens (id, theatre_id, code, name, status, capacity)
        VALUES (?, ?, ?, ?, 'ACTIVE', ?)`,
@@ -1050,9 +1085,54 @@ export async function createScreenWithSeatMap(session: CentralSession, input: Re
   }
 }
 
+export async function updateScreen(session: CentralSession, input: Record<string, unknown>) {
+  await ensureAdminManagementSchema();
+  const screenId = idValue(input.id ?? input.screenId, 'Screen ID', 50);
+  const code = stringValue(input.code, 'Screen code', 30);
+  const name = stringValue(input.name, 'Screen name', 100);
+  const status = boolValue(input.enabled) ? 'ACTIVE' : 'DISABLED';
+  const connection = await getCentralDbPool().getConnection();
+  try {
+    await connection.beginTransaction();
+    const [[screen]] = await connection.query<RowDataPacket[]>(
+      'SELECT id, theatre_id AS theatreId, capacity FROM screens WHERE id = ? FOR UPDATE',
+      [screenId]
+    );
+    if (!screen) throw new AdminManagementError('NOT_FOUND', 'Screen was not found.', 404);
+    assertTheatreScope(session, String(screen.theatreId));
+    const [result] = await connection.query<ResultSetHeader>(
+      'UPDATE screens SET code = ?, name = ?, status = ?, updated_at = NOW() WHERE id = ?',
+      [code, name, status, screenId]
+    );
+    ensureUpdateAffected(result, 'Screen');
+    await queueScheduleEvent(connection, {
+      theatreId: String(screen.theatreId),
+      entityType: 'SCREEN',
+      entityId: screenId,
+      eventType: 'SCREEN_UPDATED',
+      payload: {
+        theatreId: String(screen.theatreId),
+        screenId,
+        code,
+        name,
+        status,
+        capacity: Number(screen.capacity ?? 0)
+      }
+    });
+    await connection.commit();
+    await writeCentralAuditLog({ userId: session.userId, role: session.role, action: 'SCREEN_UPDATED', entityType: 'SCREEN', entityId: screenId });
+    return { id: screenId };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 export async function updateScreenSeatMap(session: CentralSession, input: Record<string, unknown>) {
   await ensureAdminManagementSchema();
-  const screenId = stringValue(input.screenId, 'Screen ID', 80);
+  const screenId = idValue(input.screenId, 'Screen ID', 50);
   const connection = await getCentralDbPool().getConnection();
   try {
     await connection.beginTransaction();
@@ -1100,36 +1180,50 @@ export async function updateScreenSeatMap(session: CentralSession, input: Record
   }
 }
 
-export async function upsertMovie(session: CentralSession, input: Record<string, unknown>) {
-  await ensureAdminManagementSchema();
-  if (session.role !== 'SUPER_ADMIN') throw new AdminManagementError('FORBIDDEN', 'Only super admins can manage movies.', 403);
-  const id = optionalString(input.id, 80) ?? `movie_${slug(input.title).toLowerCase()}`;
+function inputHas(input: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(input, key);
+}
+
+function csvArray(value: unknown) {
+  return String(value ?? '').split(',').map((item) => item.trim()).filter(Boolean);
+}
+
+function movieInputPayload(id: string, input: Record<string, unknown>, existing?: Record<string, unknown> | null) {
   const title = stringValue(input.title, 'Movie title', 150);
   const status = String(input.status ?? 'ACTIVE').toUpperCase();
   const safeStatus = status === 'DISABLED' || status === 'ARCHIVED' || status === 'INACTIVE' ? status : 'ACTIVE';
-  const posterUrl = optionalString(input.posterUrl, 1000);
+  const incomingPoster = optionalString(input.posterPath ?? input.posterUrl, 1000);
+  const removePoster = boolValue(input.removePoster);
+  const posterUrl = removePoster ? null : incomingPoster ?? (existing?.posterUrl == null ? null : String(existing.posterUrl));
   const posterMetadata = {
     fileName: optionalString(input.posterFileName, 190),
     contentType: optionalString(input.posterContentType, 80),
     sizeBytes: input.posterSizeBytes ? numberValue(input.posterSizeBytes, 'Poster size') : null,
-    storage: posterUrl ? 'URL' : 'NONE'
+    storage: posterUrl ? (posterUrl.startsWith('/uploads/') || posterUrl.startsWith('/seed/') || posterUrl.startsWith('/posters/') ? 'LOCAL_PATH' : 'URL') : 'NONE'
   };
-  const moviePayload = {
+  return {
     movieId: id,
     title,
-    language: optionalString(input.language, 50),
-    durationMinutes: input.durationMinutes ? numberValue(input.durationMinutes, 'Duration') : null,
-    certificate: optionalString(input.certificate, 20),
-    releaseDate: optionalString(input.releaseDate, 20),
+    language: inputHas(input, 'language') ? optionalString(input.language, 50) : existing?.language ?? null,
+    durationMinutes: inputHas(input, 'durationMinutes') ? (input.durationMinutes ? numberValue(input.durationMinutes, 'Duration') : null) : existing?.durationMinutes ?? null,
+    certificate: inputHas(input, 'certificate') ? optionalString(input.certificate, 20) : existing?.certificate ?? null,
+    releaseDate: inputHas(input, 'releaseDate') ? optionalString(input.releaseDate, 20) : dateOnly(existing?.releaseDate),
     posterUrl,
-    trailerUrl: optionalString(input.trailerUrl, 1000),
-    synopsis: optionalString(input.synopsis, 4000),
-    genreJson: String(input.genres ?? '').split(',').map((item) => item.trim()).filter(Boolean),
-    formatsJson: String(input.formats ?? '').split(',').map((item) => item.trim()).filter(Boolean),
-    languagesJson: String(input.languages ?? '').split(',').map((item) => item.trim()).filter(Boolean),
+    trailerUrl: inputHas(input, 'trailerUrl') ? optionalString(input.trailerUrl, 1000) : existing?.trailerUrl ?? null,
+    synopsis: inputHas(input, 'synopsis') ? optionalString(input.synopsis, 4000) : existing?.synopsis ?? null,
+    genreJson: inputHas(input, 'genres') ? csvArray(input.genres) : parseJsonColumn(existing?.genreJson) ?? [],
+    formatsJson: inputHas(input, 'formats') ? csvArray(input.formats) : parseJsonColumn(existing?.formatsJson) ?? [],
+    languagesJson: inputHas(input, 'languages') ? csvArray(input.languages) : parseJsonColumn(existing?.languagesJson) ?? [],
     posterMetadata,
     status: safeStatus
   };
+}
+
+export async function createMovie(session: CentralSession, input: Record<string, unknown>) {
+  await ensureAdminManagementSchema();
+  if (session.role !== 'SUPER_ADMIN') throw new AdminManagementError('FORBIDDEN', 'Only super admins can manage movies.', 403);
+  const id = optionalIdValue(input.id, 'Movie ID', 50) ?? `movie_${slug(input.title).toLowerCase()}`;
+  const moviePayload = movieInputPayload(id, input);
   const connection = await getCentralDbPool().getConnection();
   try {
     await connection.beginTransaction();
@@ -1139,30 +1233,25 @@ export async function upsertMovie(session: CentralSession, input: Record<string,
          youtube_trailer_url, synopsis, genre_json, formats_json, languages_json, poster_metadata, status
        )
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         title = VALUES(title), language = VALUES(language), duration_minutes = VALUES(duration_minutes),
-         certificate = VALUES(certificate), release_date = VALUES(release_date), poster_url = VALUES(poster_url),
-         youtube_trailer_url = VALUES(youtube_trailer_url), synopsis = VALUES(synopsis),
-         genre_json = VALUES(genre_json), formats_json = VALUES(formats_json), languages_json = VALUES(languages_json),
-         poster_metadata = VALUES(poster_metadata), status = VALUES(status), updated_at = NOW()`,
+       `,
       [
         id,
-        title,
+        moviePayload.title,
         moviePayload.language,
         moviePayload.durationMinutes,
         moviePayload.certificate,
         moviePayload.releaseDate,
-        posterUrl,
+        moviePayload.posterUrl,
         moviePayload.trailerUrl,
         moviePayload.synopsis,
         JSON.stringify(moviePayload.genreJson),
         JSON.stringify(moviePayload.formatsJson),
         JSON.stringify(moviePayload.languagesJson),
-        JSON.stringify(posterMetadata),
-        safeStatus
+        JSON.stringify(moviePayload.posterMetadata),
+        moviePayload.status
       ]
     );
-    await queueScheduleEventForTheatres(connection, { entityType: 'MOVIE', entityId: id, eventType: 'MOVIE_UPSERTED', payload: moviePayload });
+    await queueScheduleEventForTheatres(connection, { entityType: 'MOVIE', entityId: id, eventType: 'MOVIE_CREATED', payload: moviePayload });
     await connection.commit();
   } catch (error) {
     await connection.rollback();
@@ -1170,32 +1259,86 @@ export async function upsertMovie(session: CentralSession, input: Record<string,
   } finally {
     connection.release();
   }
-  await writeCentralAuditLog({ userId: session.userId, role: session.role, action: 'MOVIE_UPSERTED', entityType: 'MOVIE', entityId: id, metadata: { title, status: safeStatus } });
+  await writeCentralAuditLog({ userId: session.userId, role: session.role, action: 'MOVIE_CREATED', entityType: 'MOVIE', entityId: id, metadata: { title: moviePayload.title, status: moviePayload.status } });
+  return { id };
+}
+
+export async function updateMovie(session: CentralSession, input: Record<string, unknown>) {
+  await ensureAdminManagementSchema();
+  if (session.role !== 'SUPER_ADMIN') throw new AdminManagementError('FORBIDDEN', 'Only super admins can manage movies.', 403);
+  const id = idValue(input.id, 'Movie ID', 50);
+  const connection = await getCentralDbPool().getConnection();
+  try {
+    await connection.beginTransaction();
+    const [[existing]] = await connection.query<RowDataPacket[]>(
+      `SELECT id, language, duration_minutes AS durationMinutes, certificate, release_date AS releaseDate,
+              poster_url AS posterUrl, youtube_trailer_url AS trailerUrl, synopsis,
+              genre_json AS genreJson, formats_json AS formatsJson, languages_json AS languagesJson
+       FROM movies WHERE id = ? FOR UPDATE`,
+      [id]
+    );
+    if (!existing) throw new AdminManagementError('NOT_FOUND', 'Movie was not found.', 404);
+    const moviePayload = movieInputPayload(id, input, existing);
+    const [result] = await connection.query<ResultSetHeader>(
+      `UPDATE movies
+       SET title = ?, language = ?, duration_minutes = ?, certificate = ?, release_date = ?,
+           poster_url = ?, youtube_trailer_url = ?, synopsis = ?, genre_json = ?,
+           formats_json = ?, languages_json = ?, poster_metadata = ?, status = ?, updated_at = NOW()
+       WHERE id = ?`,
+      [
+        moviePayload.title,
+        moviePayload.language,
+        moviePayload.durationMinutes,
+        moviePayload.certificate,
+        moviePayload.releaseDate,
+        moviePayload.posterUrl,
+        moviePayload.trailerUrl,
+        moviePayload.synopsis,
+        JSON.stringify(moviePayload.genreJson),
+        JSON.stringify(moviePayload.formatsJson),
+        JSON.stringify(moviePayload.languagesJson),
+        JSON.stringify(moviePayload.posterMetadata),
+        moviePayload.status,
+        id
+      ]
+    );
+    ensureUpdateAffected(result, 'Movie');
+    await queueScheduleEventForTheatres(connection, { entityType: 'MOVIE', entityId: id, eventType: 'MOVIE_UPDATED', payload: moviePayload });
+    await connection.commit();
+    await writeCentralAuditLog({ userId: session.userId, role: session.role, action: 'MOVIE_UPDATED', entityType: 'MOVIE', entityId: id, metadata: { title: moviePayload.title, status: moviePayload.status } });
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
   return { id };
 }
 
 export async function deleteMovie(session: CentralSession, movieId: string) {
   await ensureAdminManagementSchema();
   if (session.role !== 'SUPER_ADMIN') throw new AdminManagementError('FORBIDDEN', 'Only super admins can delete movies.', 403);
+  const id = idValue(movieId, 'Movie ID', 50);
   const [[deps]] = await getCentralDbPool().query<RowDataPacket[]>(
     `SELECT
        (SELECT COUNT(*) FROM shows WHERE movie_id = ?) AS shows,
        (SELECT COUNT(*) FROM central_bookings b JOIN shows s ON s.id = b.show_id WHERE s.movie_id = ?) AS bookings`,
-    [movieId, movieId]
+    [id, id]
   );
   if (Number(deps.shows) || Number(deps.bookings)) {
     throw new AdminManagementError('PROTECTED_RECORD', 'Movie has scheduled shows or bookings. Archive or disable it instead.', 409, deps);
   }
-  await getCentralDbPool().query('DELETE FROM movies WHERE id = ?', [movieId]);
-  await writeCentralAuditLog({ userId: session.userId, role: session.role, action: 'MOVIE_DELETED', entityType: 'MOVIE', entityId: movieId });
+  const [result] = await getCentralDbPool().query<ResultSetHeader>('DELETE FROM movies WHERE id = ?', [id]);
+  ensureUpdateAffected(result, 'Movie');
+  await writeCentralAuditLog({ userId: session.userId, role: session.role, action: 'MOVIE_DELETED', entityType: 'MOVIE', entityId: id });
 }
 
 export async function createShow(session: CentralSession, input: Record<string, unknown>) {
   await ensureAdminManagementSchema();
-  const theatreId = stringValue(input.theatreId, 'Theatre ID', 80);
+  const theatreId = idValue(input.theatreId, 'Theatre ID', 50);
   assertTheatreScope(session, theatreId);
-  const screenId = stringValue(input.screenId, 'Screen ID', 80);
-  const movieId = stringValue(input.movieId, 'Movie ID', 80);
+  const screenId = idValue(input.screenId, 'Screen ID', 50);
+  const movieId = idValue(input.movieId, 'Movie ID', 50);
   const authorityMode = stringValue(input.authorityMode, 'Authority mode', 80) as SchedulingAuthorityMode;
   if (!SHOW_SCHEDULING_AUTHORITY_MODES.includes(authorityMode)) throw new AdminManagementError('INVALID_AUTHORITY_MODE', 'Show scheduling supports only the three public authority modes.');
   const start = parseLocalDateTime(input.showDate, input.showTime, 'Show start');
@@ -1213,7 +1356,7 @@ export async function createShow(session: CentralSession, input: Record<string, 
     if (!layout) throw new AdminManagementError('VALIDATION_ERROR', 'Selected screen does not have an active seat-map version.');
     const end = parseMaybeDateTime(input.showEndTime) ?? mysqlDateTime(new Date(new Date(start.replace(' ', 'T')).getTime() + (durationMinutes ?? Number(movie.durationMinutes ?? 150)) * 60_000));
     await assertNoOverlap(connection, { screenId, start, end, bufferMinutes });
-    const showId = optionalString(input.id, 80) ?? `SHOW_${slug(screenId)}_${Date.now()}`;
+    const showId = optionalIdValue(input.id, 'Show ID', 50) ?? `SHOW_${slug(screenId)}_${slug(start)}`;
     const showStatus = String(input.status ?? 'OPEN').toUpperCase() === 'SCHEDULED' ? 'SCHEDULED' : 'OPEN';
     const bookingOpensAt = parseMaybeDateTime(input.bookingOpensAt);
     const bookingClosesAt = parseMaybeDateTime(input.bookingClosesAt);
@@ -1261,7 +1404,7 @@ export async function createShow(session: CentralSession, input: Record<string, 
 
 export async function updateShowSchedule(session: CentralSession, input: Record<string, unknown>) {
   await ensureAdminManagementSchema();
-  const showId = stringValue(input.showId, 'Show ID', 80);
+  const showId = idValue(input.showId, 'Show ID', 50);
   const connection = await getCentralDbPool().getConnection();
   try {
     await connection.beginTransaction();
@@ -1287,7 +1430,7 @@ export async function updateShowSchedule(session: CentralSession, input: Record<
       throw new AdminManagementError('UNSAFE_LAYOUT_CHANGE', 'Booked shows cannot change seat-map versions.');
     }
     const previous = { showTime: show.show_time, showEndTime: show.show_end_time, authorityMode: show.authority_mode, status: show.status };
-    await connection.query(
+    const [result] = await connection.query<ResultSetHeader>(
       `UPDATE shows
        SET show_time = ?, show_end_time = ?, booking_opens_at = ?, booking_closes_at = ?,
            cleaning_buffer_minutes = ?, authority_mode = ?, status = CASE WHEN status = 'CANCELLED' THEN status ELSE ? END,
@@ -1305,6 +1448,7 @@ export async function updateShowSchedule(session: CentralSession, input: Record<
         showId
       ]
     );
+    ensureUpdateAffected(result, 'Show');
     await writeAuthorityPolicy(connection, showId, authorityMode);
     await connection.query(
       `INSERT INTO show_change_history (show_id, action, admin_user_id, reason, previous_values, new_values, affected_booking_count, affected_ticket_count)
@@ -1381,7 +1525,7 @@ async function queueBookingNotifications(connection: PoolConnection, showId: str
 
 export async function cancelShow(session: CentralSession, input: Record<string, unknown>) {
   await ensureAdminManagementSchema();
-  const showId = stringValue(input.showId, 'Show ID', 80);
+  const showId = idValue(input.showId, 'Show ID', 50);
   const reason = stringValue(input.reason, 'Cancellation reason', 1000);
   if (!boolValue(input.confirmCancellation)) throw new AdminManagementError('CANCELLATION_CONFIRMATION_REQUIRED', 'Explicit cancellation confirmation is required.');
   const connection = await getCentralDbPool().getConnection();

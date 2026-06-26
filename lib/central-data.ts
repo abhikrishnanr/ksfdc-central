@@ -174,7 +174,7 @@ export interface BookingShowDetail {
   layoutName: string;
   screenSideLabel: string;
   zoneRates: ZoneRate[];
-  rows: Array<{ rowLabel: string; cells: SeatCell[] }>;
+  rows: Array<{ rowKey?: string; rowLabel: string; isPathway?: boolean; cells: SeatCell[] }>;
 }
 
 export interface AdminDashboardData {
@@ -202,7 +202,7 @@ export interface SeatLayoutSummary {
   theatreName: string;
   screenName: string;
   zones: ZoneRate[];
-  rows: Array<{ rowLabel: string; cells: SeatCell[] }>;
+  rows: Array<{ rowKey?: string; rowLabel: string; isPathway?: boolean; cells: SeatCell[] }>;
   totalSeats: number;
   gapCount: number;
 }
@@ -232,6 +232,17 @@ function parseJsonArray(value: unknown): string[] {
     return Array.isArray(parsed) ? parsed.map(String) : [];
   } catch {
     return [];
+  }
+}
+
+function parseJsonObject(value: unknown): Record<string, unknown> | null {
+  if (!value) return null;
+  if (typeof value === 'object') return value as Record<string, unknown>;
+  try {
+    const parsed = JSON.parse(String(value));
+    return parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
   }
 }
 
@@ -717,7 +728,8 @@ export async function getBookingShow(showId: string) {
              m.youtube_trailer_url AS movieTrailerUrl, m.language, m.duration_minutes AS durationMinutes,
              m.certificate, m.genre_json AS genreJson, m.formats_json AS formatsJson,
              s.theatre_id AS theatreId, t.name AS theatreName, sc.name AS screenName,
-             s.show_time AS showTime, s.authority_mode AS authorityMode, s.status, l.name AS layoutName, l.screen_side_label AS screenSideLabel
+             s.show_time AS showTime, s.authority_mode AS authorityMode, s.status,
+             l.name AS layoutName, l.screen_side_label AS screenSideLabel, l.layout_json AS layoutJson
       FROM shows s
       JOIN movies m ON m.id = s.movie_id
       JOIN theatres t ON t.id = s.theatre_id
@@ -754,6 +766,7 @@ export async function getBookingShow(showId: string) {
     `, [showId]);
 
     const rowMap = new Map<string, SeatCell[]>();
+    const cellMap = new Map<string, SeatCell>();
     for (const cell of cells) {
       const rowLabel = String(cell.rowLabel);
       const item: SeatCell = {
@@ -769,7 +782,43 @@ export async function getBookingShow(showId: string) {
         status: cell.seatStatus
       };
       rowMap.set(rowLabel, [...(rowMap.get(rowLabel) ?? []), item]);
+      cellMap.set(item.cellId, item);
+      if (item.seatId) cellMap.set(item.seatId, item);
     }
+    const layoutJson = parseJsonObject(show.layoutJson);
+    const savedRows = Array.isArray(layoutJson?.rows) ? layoutJson.rows : null;
+    const rows = savedRows
+      ? savedRows.map((sourceRow, index) => {
+        const row = sourceRow && typeof sourceRow === 'object' ? sourceRow as Record<string, unknown> : {};
+        const rowLabel = String(row.rowLabel ?? '');
+        const rawCells = Array.isArray(row.cells) ? row.cells : [];
+        const mergedCells = rawCells.map((sourceCell, cellIndex) => {
+          const record = sourceCell && typeof sourceCell === 'object' ? sourceCell as Record<string, unknown> : {};
+          const cellId = String(record.seatId ?? record.cellId ?? record.id ?? `${rowLabel || 'pathway'}-${cellIndex}`);
+          const liveCell = cellMap.get(cellId);
+          if (liveCell) return liveCell;
+          const kind = String(record.itemType ?? record.kind ?? 'SEAT').toUpperCase() as SeatCell['kind'];
+          return {
+            cellId,
+            kind: kind === 'AISLE' || kind === 'GAP' || kind === 'BLOCKED' ? kind : 'SEAT',
+            rowLabel,
+            displayOrder: Number(record.displayOrder ?? cellIndex + 1),
+            seatId: record.seatId ? String(record.seatId) : null,
+            seatNumber: record.seatNumber ? String(record.seatNumber) : null,
+            zone: record.zoneCode ? String(record.zoneCode) : null,
+            accessibility: record.accessibility ? String(record.accessibility) : null,
+            price: null,
+            status: kind === 'BLOCKED' ? 'BLOCKED' : 'AVAILABLE'
+          } satisfies SeatCell;
+        });
+        return {
+          rowKey: String(row.rowKey ?? (rowLabel ? `row-${rowLabel}-${index}` : `pathway-${index}`)),
+          rowLabel,
+          isPathway: Boolean(row.isPathway) || mergedCells.length === 0,
+          cells: mergedCells.sort((a, b) => a.displayOrder - b.displayOrder)
+        };
+      })
+      : Array.from(rowMap, ([rowLabel, rowCells], index) => ({ rowKey: `row-${rowLabel}-${index}`, rowLabel, cells: rowCells }));
 
     return {
       showId: String(show.showId),
@@ -791,7 +840,7 @@ export async function getBookingShow(showId: string) {
       layoutName: String(show.layoutName),
       screenSideLabel: String(show.screenSideLabel),
       zoneRates: prices.map((row) => ({ zone: String(row.zone), amount: Number(row.amount) })),
-      rows: Array.from(rowMap, ([rowLabel, rowCells]) => ({ rowLabel, cells: rowCells }))
+      rows
     };
   });
 }
@@ -902,7 +951,7 @@ export async function getAdminDashboard(theatreId?: string | null) {
 export async function getSeatLayouts() {
   return safe<SeatLayoutSummary[]>([], async () => {
     const [layouts] = await getCentralDbPool().query<RowDataPacket[]>(`
-      SELECT l.id, l.name, t.name AS theatreName, sc.name AS screenName
+      SELECT l.id, l.name, l.layout_json AS layoutJson, t.name AS theatreName, sc.name AS screenName
       FROM seat_layouts l
       JOIN screens sc ON sc.id = l.screen_id
       JOIN theatres t ON t.id = sc.theatre_id
@@ -926,6 +975,7 @@ export async function getSeatLayouts() {
         ORDER BY row_sort, row_label, display_order
       `, [layout.id]);
       const rowMap = new Map<string, SeatCell[]>();
+      const cellMap = new Map<string, SeatCell>();
       let totalSeats = 0;
       let gapCount = 0;
       for (const cell of cellRows) {
@@ -945,14 +995,50 @@ export async function getSeatLayouts() {
           status: cell.seatStatus
         };
         rowMap.set(rowLabel, [...(rowMap.get(rowLabel) ?? []), item]);
+        cellMap.set(item.cellId, item);
+        if (item.seatId) cellMap.set(item.seatId, item);
       }
+      const layoutJson = parseJsonObject(layout.layoutJson);
+      const savedRows = Array.isArray(layoutJson?.rows) ? layoutJson.rows : null;
+      const rows = savedRows
+        ? savedRows.map((sourceRow, index) => {
+          const row = sourceRow && typeof sourceRow === 'object' ? sourceRow as Record<string, unknown> : {};
+          const rowLabel = String(row.rowLabel ?? '');
+          const rawCells = Array.isArray(row.cells) ? row.cells : [];
+          const cells = rawCells.map((sourceCell, cellIndex) => {
+            const record = sourceCell && typeof sourceCell === 'object' ? sourceCell as Record<string, unknown> : {};
+            const cellId = String(record.seatId ?? record.cellId ?? record.id ?? `${rowLabel || 'pathway'}-${cellIndex}`);
+            const liveCell = cellMap.get(cellId);
+            if (liveCell) return liveCell;
+            const kind = String(record.itemType ?? record.kind ?? 'SEAT').toUpperCase() as SeatCell['kind'];
+            return {
+              cellId,
+              kind: kind === 'AISLE' || kind === 'GAP' || kind === 'BLOCKED' ? kind : 'SEAT',
+              rowLabel,
+              displayOrder: Number(record.displayOrder ?? cellIndex + 1),
+              seatId: record.seatId ? String(record.seatId) : null,
+              seatNumber: record.seatNumber ? String(record.seatNumber) : null,
+              zone: record.zoneCode ? String(record.zoneCode) : null,
+              accessibility: record.accessibility ? String(record.accessibility) : null,
+              price: null,
+              status: kind === 'BLOCKED' ? 'BLOCKED' : 'AVAILABLE'
+            } satisfies SeatCell;
+          });
+          return {
+            rowKey: String(row.rowKey ?? (rowLabel ? `row-${rowLabel}-${index}` : `pathway-${index}`)),
+            rowLabel,
+            isPathway: Boolean(row.isPathway) || cells.length === 0,
+            cells: cells.sort((a, b) => a.displayOrder - b.displayOrder)
+          };
+        })
+        : Array.from(rowMap, ([rowLabel, cells], index) => ({ rowKey: `row-${rowLabel}-${index}`, rowLabel, cells }));
       output.push({
         id: String(layout.id),
         name: String(layout.name),
         theatreName: String(layout.theatreName),
         screenName: String(layout.screenName),
         zones: zoneRows.map((row) => ({ zone: String(row.zone), amount: Number(row.amount) })),
-        rows: Array.from(rowMap, ([rowLabel, cells]) => ({ rowLabel, cells })),
+        rows,
         totalSeats,
         gapCount
       });

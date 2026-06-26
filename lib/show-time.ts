@@ -32,3 +32,18 @@ export function showDaypartLabel(value: string | Date) {
   if (hour >= 16 && hour < 20) return 'Evening';
   return 'Night';
 }
+
+export function formatShowDateTimeWithDaypart(value: string | Date) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) return 'Show time unavailable';
+  const formatted = new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }).format(date);
+  return `${formatted} - ${showDaypartLabel(date)}`;
+}

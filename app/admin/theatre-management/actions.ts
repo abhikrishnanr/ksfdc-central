@@ -8,6 +8,7 @@ import {
   createScreenWithSeatMap,
   createShow,
   createTheatre,
+  updateScreen,
   updateScreenSeatMap,
   updateShowSchedule,
   updateTheatre
@@ -74,6 +75,17 @@ export async function createSeatMapVersionAction(formData: FormData) {
   requiredString(payload, 'screenId');
   requiredString(payload, 'seatMapJson');
   await updateScreenSeatMap(admin, payload);
+  refreshManagement(['/admin/seat-layouts']);
+  redirect('/admin/theatre-management?tab=screens');
+}
+
+export async function updateScreenAction(formData: FormData) {
+  const admin = await session();
+  const payload = record(formData);
+  requiredString(payload, 'id');
+  requiredString(payload, 'code');
+  requiredString(payload, 'name');
+  await updateScreen(admin, payload);
   refreshManagement(['/admin/seat-layouts']);
   redirect('/admin/theatre-management?tab=screens');
 }

@@ -9,6 +9,12 @@ const buildRoot = existsSync(path.join(appRoot, 'node_modules', 'next', 'package
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: buildRoot,
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'upload.wikimedia.org' },
+      { protocol: 'https', hostname: 'images.filmibeat.com' }
+    ]
+  },
   turbopack: {
     root: buildRoot
   }

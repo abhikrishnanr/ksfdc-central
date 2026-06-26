@@ -14,9 +14,9 @@ INSERT INTO screens (id, theatre_id, code, name, status, capacity)
 VALUES ('SCREEN001', 'TH_TVM001', 'SCREEN001', 'Screen 1', 'ACTIVE', 43)
 ON DUPLICATE KEY UPDATE name = VALUES(name), status = VALUES(status), capacity = VALUES(capacity);
 
-INSERT INTO movies (id, title, language, duration_minutes, certificate, status, poster_metadata)
-VALUES ('MOV_DEMO_001', 'Demo Movie', 'Malayalam', 142, 'U/A', 'ACTIVE', JSON_OBJECT('storage','PLACEHOLDER','fileName','demo-poster.webp'))
-ON DUPLICATE KEY UPDATE title = VALUES(title), language = VALUES(language), duration_minutes = VALUES(duration_minutes), certificate = VALUES(certificate), status = VALUES(status), poster_metadata = VALUES(poster_metadata);
+INSERT INTO movies (id, title, language, duration_minutes, certificate, status, poster_url, poster_metadata)
+VALUES ('MOV_DEMO_001', 'Demo Movie', 'Malayalam', 142, 'U/A', 'ACTIVE', '/seed/movie-posters/varavu.jpg', JSON_OBJECT('storage','LOCAL_PATH','fileName','varavu.jpg'))
+ON DUPLICATE KEY UPDATE title = VALUES(title), language = VALUES(language), duration_minutes = VALUES(duration_minutes), certificate = VALUES(certificate), status = VALUES(status), poster_url = VALUES(poster_url), poster_metadata = VALUES(poster_metadata);
 
 INSERT INTO seat_layouts (id, theatre_id, screen_id, name, screen_side_label, is_active, version_no, status, seat_count, layout_json, source_filename)
 VALUES ('LAYOUT_SCREEN001_V1', 'TH_TVM001', 'SCREEN001', 'Screen 1 Canonical Layout V1', 'SCREEN THIS SIDE', TRUE, 1, 'ACTIVE', 43, JSON_OBJECT('name','Screen 1 Canonical Layout V1','source','seed'), 'seed-layout.json')

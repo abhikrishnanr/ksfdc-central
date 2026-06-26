@@ -10,10 +10,7 @@ import { getCentralDbPool } from '../../../../lib/db';
 import { getBookingShow } from '../../../../lib/central-data';
 import { getPublicSession } from '../../../../lib/public-auth';
 import { ensureCentralSyncInbox } from '../../../../lib/sync';
-
-function formatTime(value: unknown) {
-  return value ? new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(value as string | Date)) : 'Not recorded';
-}
+import { formatShowDateTimeWithDaypart } from '../../../../lib/show-time';
 
 function ticketToken(bookingId: string, showId: string) {
   return createHash('sha256').update(`${bookingId}:${showId}:${process.env.TICKET_VERIFY_SECRET ?? 'dev-ticket-verify-secret'}`).digest('hex').slice(0, 24);
@@ -69,7 +66,7 @@ export default async function ProfileTicketDetailPage({ params }: { params: Prom
         <PageHeader
           eyebrow="Ticket confirmed"
           title={String(booking.movieTitle)}
-          description={`${String(booking.theatreName)} - ${String(booking.screenName)} - ${formatTime(booking.showTime)}`}
+          description={`${String(booking.theatreName)} - ${String(booking.screenName)} - ${formatShowDateTimeWithDaypart(booking.showTime as Date | string)}`}
         />
       </div>
       <ShareableTicketCard seatLayout={seatLayout} ticket={{

@@ -32,12 +32,14 @@ export default function TicketSeatLayoutModal({ show, ticketSeats, onClose }: { 
             </div>
             <TransformComponent wrapperClass="checker-seat-transform" contentClass="checker-seat-transform-content">
               <div className="checker-hall-layout">
-                {show.rows.map((row) => <div className="checker-hall-row" key={row.rowLabel}>
-                  <strong>{row.rowLabel}</strong>
-                  {row.cells.map((cell) => cell.kind === 'SEAT'
-                    ? <span className={selected.has(String(cell.seatId)) ? 'is-ticket-seat' : cell.status === 'SOLD' ? 'is-sold' : ''} key={cell.cellId}>{cell.seatNumber}</span>
-                    : <i style={{ width: Math.max(18, Number(cell.displayOrder) || 18) }} key={cell.cellId} />)}
-                </div>)}
+                {show.rows.map((row, rowIndex) => (
+                  <div className={`checker-hall-row${row.isPathway || row.cells.length === 0 ? ' pathway-row' : ''}`} key={row.rowKey ?? row.rowLabel ?? `row-${rowIndex}`}>
+                    {row.cells.length === 0 || row.isPathway ? null : <strong>{row.rowLabel}</strong>}
+                    {row.cells.map((cell) => cell.kind === 'SEAT'
+                      ? <span className={selected.has(String(cell.seatId)) ? 'is-ticket-seat' : cell.status === 'SOLD' ? 'is-sold' : ''} key={cell.cellId}>{cell.seatNumber}</span>
+                      : <i style={{ width: Math.max(18, Number(cell.displayOrder) || 18) }} key={cell.cellId} />)}
+                  </div>
+                ))}
                 <div className="checker-screen-line">SCREEN THIS SIDE</div>
               </div>
             </TransformComponent>

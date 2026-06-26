@@ -17,12 +17,8 @@ function rowZone(row: { cells: SeatCell[] }) {
   return row.cells.find((cell) => cell.kind === 'SEAT' && cell.zone)?.zone ?? 'STANDARD';
 }
 
-function groupedRows(show: BookingShowDetail) {
-  return show.zoneRates.map((rate) => ({
-    zone: rate.zone,
-    amount: rate.amount,
-    rows: show.rows.filter((row) => rowZone(row) === rate.zone)
-  })).filter((group) => group.rows.length > 0);
+function amountForZone(show: BookingShowDetail, zone: string) {
+  return show.zoneRates.find((rate) => rate.zone === zone)?.amount ?? null;
 }
 
 export { STATUS_STYLES };
@@ -43,10 +39,13 @@ export default function BookMyShowStyleSeatMap({
   const [scale, setScale] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
   const shellRef = useRef<HTMLElement>(null);
-  const groups = groupedRows(show);
+
+  function fullscreenTarget() {
+    return shellRef.current?.closest('.public-seat-selection-layout') as HTMLElement | null ?? shellRef.current;
+  }
 
   useEffect(() => {
-    const onFullscreenChange = () => setFullscreen(document.fullscreenElement === shellRef.current);
+    const onFullscreenChange = () => setFullscreen(document.fullscreenElement === fullscreenTarget());
     document.addEventListener('fullscreenchange', onFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
@@ -68,26 +67,36 @@ export default function BookMyShowStyleSeatMap({
       return;
     }
     try {
-      await shellRef.current?.requestFullscreen();
-      if (document.fullscreenElement !== shellRef.current) setFullscreen(true);
+      const target = fullscreenTarget();
+      await target?.requestFullscreen();
+      if (document.fullscreenElement !== target) setFullscreen(true);
     } catch {
       setFullscreen(true);
     }
   }
 
   function hallContent(miniature = false) {
+    let activeZone = '';
     return (
       <div className={`unified-seat-hall${miniature ? ' is-minimap' : ''}`}>
-        {groups.map((group) => (
-          <section className="unified-seat-zone" key={group.zone}>
-            <div className="unified-zone-heading">
-              <strong>{group.zone}</strong>
-              <span>INR {group.amount}</span>
-            </div>
-            <div className="unified-zone-rows">
-              {group.rows.map((row) => (
-                <div className="seat-row public" key={row.rowLabel}>
-                  <strong className="row-label public">{row.rowLabel}</strong>
+        {show.rows.map((row, rowIndex) => {
+          const zone = row.cells.length ? rowZone(row) : activeZone;
+          const zoneChanged = Boolean(row.cells.length && zone !== activeZone);
+          if (row.cells.length) activeZone = zone;
+          const amount = amountForZone(show, zone);
+          return (
+            <section className={`unified-seat-zone${row.isPathway || row.cells.length === 0 ? ' is-pathway-zone' : ''}`} key={row.rowKey ?? row.rowLabel ?? `row-${rowIndex}`}>
+              {zoneChanged ? (
+                <div className="unified-zone-heading">
+                  <strong>{zone}</strong>
+                  {amount == null ? null : <span>INR {amount}</span>}
+                </div>
+              ) : null}
+              {row.cells.length === 0 || row.isPathway ? (
+                <div className="seat-row public pathway-row" aria-label="Aisle pathway" />
+              ) : (
+                <div className="seat-row public">
+                  {row.rowLabel ? <strong className="row-label public">{row.rowLabel}</strong> : <span className="row-label public empty" aria-hidden="true" />}
                   {row.cells.map((cell) => {
                     if (cell.kind !== 'SEAT') {
                       return <span className="aisle-gap public" key={cell.cellId} aria-hidden="true" />;
@@ -112,10 +121,10 @@ export default function BookMyShowStyleSeatMap({
                     );
                   })}
                 </div>
-              ))}
-            </div>
-          </section>
-        ))}
+              )}
+            </section>
+          );
+        })}
         <div className="unified-screen">
           <span>{show.screenSideLabel}</span>
         </div>

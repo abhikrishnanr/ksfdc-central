@@ -1,7 +1,5 @@
-'use client';
-
+import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
 
 export type MovieCardMovie = {
   id: string;
@@ -18,14 +16,11 @@ export type MovieCardMovie = {
 };
 
 export default function MovieCard({ movie }: { movie: MovieCardMovie }) {
-  const [posterFailed, setPosterFailed] = useState(false);
-  const hasPoster = Boolean(movie.posterUrl && !posterFailed);
-
   return (
     <article className="public-movie-card">
       <div className="public-movie-poster">
-        {hasPoster ? (
-          <img src={movie.posterUrl ?? ''} alt={`${movie.title} poster`} onError={() => setPosterFailed(true)} />
+        {movie.posterUrl ? (
+          <Image src={movie.posterUrl} alt={`${movie.title} poster`} fill sizes="(max-width: 720px) 48vw, 220px" />
         ) : (
           <div className="public-movie-poster-fallback">
             <div>

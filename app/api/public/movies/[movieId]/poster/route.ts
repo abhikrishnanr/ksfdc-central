@@ -13,6 +13,18 @@ const ALLOWED_POSTER_HOSTS = new Set([
   'm.media-amazon.com'
 ]);
 
+const LOCAL_POSTER_ROOTS = [
+  path.resolve(process.cwd(), 'public', 'posters'),
+  path.resolve(process.cwd(), 'public', 'seed', 'movie-posters'),
+  path.resolve(process.cwd(), 'public', 'uploads', 'movie-posters')
+];
+
+function contentTypeForPoster(filePath: string) {
+  if (filePath.endsWith('.webp')) return 'image/webp';
+  if (filePath.endsWith('.png')) return 'image/png';
+  return 'image/jpeg';
+}
+
 export async function GET(_request: Request, { params }: { params: Promise<{ movieId: string }> }) {
   const { movieId } = await params;
   const [[movie]] = await getCentralDbPool().query<RowDataPacket[]>(
@@ -21,17 +33,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ mov
   );
   if (!movie?.posterUrl) return NextResponse.json({ error: 'Poster not found.' }, { status: 404 });
   const posterUrl = String(movie.posterUrl);
-  if (posterUrl.startsWith('/posters/')) {
-    const posterRoot = path.resolve(process.cwd(), 'public', 'posters');
+  if (posterUrl.startsWith('/posters/') || posterUrl.startsWith('/seed/movie-posters/') || posterUrl.startsWith('/uploads/movie-posters/')) {
     const posterPath = path.resolve(process.cwd(), 'public', posterUrl.slice(1));
-    if (!posterPath.startsWith(posterRoot + path.sep)) {
+    if (!LOCAL_POSTER_ROOTS.some((root) => posterPath.startsWith(root + path.sep))) {
       return NextResponse.json({ error: 'Poster path is not allowed.' }, { status: 403 });
     }
     const bytes = await readFile(posterPath).catch(() => null);
     if (!bytes) return NextResponse.json({ error: 'Poster not found.' }, { status: 404 });
     return new NextResponse(new Uint8Array(bytes), {
       headers: {
-        'Content-Type': posterPath.endsWith('.webp') ? 'image/webp' : 'image/jpeg',
+        'Content-Type': contentTypeForPoster(posterPath),
         'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800'
       }
     });

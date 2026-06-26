@@ -1,9 +1,11 @@
 export const dynamic = 'force-dynamic';
 
 import { ActionButton, MetricTile, PageHeader, PremiumCard, StatusBadge } from '../../../components/premium-ui';
+import AdminSubmitButton from '../../../components/template/AdminSubmitButton';
+import PosterFileInput from '../../../components/template/PosterFileInput';
 import { requireCentralRole } from '../../../lib/auth';
 import { listAdminManagementData } from '../../../lib/admin-management';
-import { deleteMovieAction, upsertMovieAction } from './actions';
+import { createMovieAction, deleteMovieAction, updateMovieAction } from './actions';
 
 function tone(status: string) {
   if (status === 'ACTIVE') return 'good' as const;
@@ -42,26 +44,23 @@ export default async function MovieManagementPage() {
       </section>
 
       <PremiumCard>
-        <p className="eyebrow">Create or edit</p>
-        <h2>Movie details and poster metadata</h2>
-        <form className="admin-form admin-form-wide" action={upsertMovieAction}>
+        <p className="eyebrow">Create movie</p>
+        <h2>New movie details</h2>
+        <form className="admin-form admin-form-wide" action={createMovieAction}>
           <Field label="Movie ID" name="id" />
           <Field label="Title" name="title" required />
           <Field label="Language" name="language" />
           <Field label="Duration minutes" name="durationMinutes" type="number" />
           <Field label="Certificate" name="certificate" />
           <Field label="Release date" name="releaseDate" type="date" />
-          <Field label="Poster URL" name="posterUrl" />
-          <Field label="Poster file name" name="posterFileName" />
-          <Field label="Poster content type" name="posterContentType" />
-          <Field label="Poster size bytes" name="posterSizeBytes" type="number" />
+          <PosterFileInput />
           <Field label="Trailer URL" name="trailerUrl" />
           <Field label="Genres comma separated" name="genres" />
           <Field label="Formats comma separated" name="formats" />
           <Field label="Languages comma separated" name="languages" />
           <label className="admin-field"><span>Status</span><select name="status"><option value="ACTIVE">Active</option><option value="DISABLED">Disabled</option><option value="ARCHIVED">Archived</option></select></label>
           <label className="admin-field wide"><span>Synopsis</span><textarea name="synopsis" rows={4} /></label>
-          <button className="action-button primary" type="submit">Save movie</button>
+          <AdminSubmitButton pendingLabel="Creating...">Create movie</AdminSubmitButton>
         </form>
       </PremiumCard>
 
@@ -80,20 +79,20 @@ export default async function MovieManagementPage() {
               <MetricTile label="Duration" value={movie.durationMinutes ? `${String(movie.durationMinutes)} min` : '-'} />
               <MetricTile label="Shows" value={String(movie.showCount ?? 0)} />
             </div>
-            <form className="admin-form compact" action={upsertMovieAction}>
+            <form className="admin-form compact" action={updateMovieAction}>
               <input type="hidden" name="id" value={String(movie.id)} />
               <Field label="Title" name="title" defaultValue={String(movie.title)} required />
               <Field label="Language" name="language" defaultValue={String(movie.language ?? '')} />
               <Field label="Duration minutes" name="durationMinutes" defaultValue={String(movie.durationMinutes ?? '')} type="number" />
               <Field label="Certificate" name="certificate" defaultValue={String(movie.certificate ?? '')} />
-              <Field label="Poster URL" name="posterUrl" defaultValue={String(movie.posterUrl ?? '')} />
+              <PosterFileInput currentPosterUrl={movie.posterUrl ? String(movie.posterUrl) : null} label="Replace poster" />
               <label className="admin-field"><span>Status</span><select name="status" defaultValue={String(movie.status)}><option value="ACTIVE">Active</option><option value="DISABLED">Disabled</option><option value="ARCHIVED">Archived</option></select></label>
-              <button className="action-button" type="submit">Save</button>
+              <AdminSubmitButton variant="default" pendingLabel="Updating...">Update movie</AdminSubmitButton>
             </form>
             {Number(movie.showCount ?? 0) === 0 ? (
               <form action={deleteMovieAction} className="admin-form compact danger-form">
                 <input type="hidden" name="id" value={String(movie.id)} />
-                <button className="action-button warn" type="submit">Delete movie</button>
+                <AdminSubmitButton variant="warn" pendingLabel="Deleting...">Delete movie</AdminSubmitButton>
               </form>
             ) : (
               <p className="muted-note">This movie has scheduled shows. Archive or disable it instead of deleting.</p>

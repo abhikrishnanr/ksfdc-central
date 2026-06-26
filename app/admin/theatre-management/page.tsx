@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import { ActionButton, EmptyState, MetricTile, PageHeader, PremiumCard, StatusBadge } from '../../../components/premium-ui';
+import AdminSubmitButton from '../../../components/template/AdminSubmitButton';
 import { requireCentralRole } from '../../../lib/auth';
 import { listAdminManagementData, SCHEDULING_AUTHORITY_LABELS, SHOW_SCHEDULING_AUTHORITY_MODES } from '../../../lib/admin-management';
 import {
@@ -10,6 +11,7 @@ import {
   createSeatMapVersionAction,
   createShowAction,
   createTheatreAction,
+  updateScreenAction,
   updateShowAction,
   updateTheatreAction
 } from './actions';
@@ -120,7 +122,7 @@ function SectionHeading({ eyebrow, title, description }: { eyebrow: string; titl
 export default async function TheatreManagementPage({
   searchParams
 }: {
-  searchParams?: Promise<{ tab?: string; editShow?: string; editTheatre?: string }>;
+  searchParams?: Promise<{ tab?: string; editShow?: string; editTheatre?: string; editScreen?: string }>;
 }) {
   const params = await searchParams;
   const allowedTabs: TabKey[] = ['overview', 'theatres', 'screens', 'scheduling'];
@@ -135,6 +137,7 @@ export default async function TheatreManagementPage({
 
   const selectedShow = shows.find((show) => String(show.id) === params?.editShow);
   const selectedTheatre = theatres.find((theatre) => String(theatre.id) === params?.editTheatre);
+  const selectedScreen = screens.find((screen) => String(screen.id) === params?.editScreen);
   const activeShows = shows.filter((show) => !['CANCELLED', 'COMPLETED'].includes(String(show.status)));
   const syncPending = shows.filter((show) => Number(show.pendingScheduleSync ?? 0) > 0).length;
   const bookedShows = shows.filter((show) => Number(show.bookingCount ?? 0) > 0 || Number(show.ticketCount ?? 0) > 0).length;
@@ -222,7 +225,7 @@ export default async function TheatreManagementPage({
                 <Field label="Phone" name="contactPhone" />
                 <Field label="Timezone" name="timezone" defaultValue="Asia/Kolkata" />
                 <label className="admin-field wide"><span>Address</span><textarea name="address" rows={3} /></label>
-                <button className="action-button primary" type="submit">Create theatre</button>
+                <AdminSubmitButton pendingLabel="Creating...">Create theatre</AdminSubmitButton>
               </form>
             </PremiumCard>
           ) : null}
@@ -256,7 +259,7 @@ export default async function TheatreManagementPage({
                         <Field label="Timezone" name="timezone" defaultValue={String(theatre.timezone ?? 'Asia/Kolkata')} />
                         <label className="admin-inline"><input name="enabled" type="checkbox" defaultChecked={String(theatre.status) === 'ACTIVE'} /> Enabled</label>
                         <div className="meta-row">
-                          <button className="action-button primary" type="submit">Save changes</button>
+                          <AdminSubmitButton pendingLabel="Updating...">Save changes</AdminSubmitButton>
                           <Link className="action-button" href="/admin/theatre-management?tab=theatres">Close</Link>
                         </div>
                       </form>
@@ -284,7 +287,7 @@ export default async function TheatreManagementPage({
                 <span>Seat-map JSON</span>
                 <textarea name="seatMapJson" rows={11} required placeholder='{"name":"Screen 1","rows":[{"rowLabel":"A","cells":[{"seatId":"A1","seatNumber":"1","zone":"SILVER"}]}]}' />
               </label>
-              <button className="action-button primary" type="submit">Validate and create screen</button>
+              <AdminSubmitButton pendingLabel="Creating...">Validate and create screen</AdminSubmitButton>
             </form>
           </PremiumCard>
 
@@ -295,7 +298,7 @@ export default async function TheatreManagementPage({
               <Field label="Layout name" name="layoutName" />
               <Field label="Source file name" name="sourceFilename" />
               <label className="admin-field wide"><span>Seat-map JSON</span><textarea name="seatMapJson" rows={11} required /></label>
-              <button className="action-button primary" type="submit">Create layout version</button>
+              <AdminSubmitButton pendingLabel="Publishing...">Create layout version</AdminSubmitButton>
             </form>
           </PremiumCard>
 
@@ -312,8 +315,23 @@ export default async function TheatreManagementPage({
                     <div className="meta-row">
                       <StatusBadge tone={toneForStatus(String(screen.status))}>{String(screen.status)}</StatusBadge>
                       <StatusBadge tone="info">{String(screen.activeSeatCount ?? screen.capacity ?? 0)} seats</StatusBadge>
+                      <Link className="action-button" href={`/admin/theatre-management?tab=screens&editScreen=${encodeURIComponent(String(screen.id))}`}>
+                        {String(selectedScreen?.id) === String(screen.id) ? 'Editing' : 'Edit'}
+                      </Link>
                     </div>
                   </div>
+                  {String(selectedScreen?.id) === String(screen.id) ? (
+                    <form className="admin-form compact" action={updateScreenAction} style={{ marginTop: 14 }}>
+                      <input type="hidden" name="id" value={String(screen.id)} />
+                      <Field label="Screen code" name="code" defaultValue={String(screen.code ?? '')} required />
+                      <Field label="Screen name" name="name" defaultValue={String(screen.name ?? '')} required />
+                      <label className="admin-inline"><input name="enabled" type="checkbox" defaultChecked={String(screen.status) === 'ACTIVE'} /> Enabled</label>
+                      <div className="meta-row">
+                        <AdminSubmitButton pendingLabel="Updating...">Update screen</AdminSubmitButton>
+                        <Link className="action-button" href="/admin/theatre-management?tab=screens">Close</Link>
+                      </div>
+                    </form>
+                  ) : null}
                 </article>
               ))}
             </div>
@@ -344,7 +362,7 @@ export default async function TheatreManagementPage({
               <Field label="Booking opens at" name="bookingOpensAt" type="datetime-local" />
               <Field label="Booking closes at" name="bookingClosesAt" type="datetime-local" />
               <label className="admin-field wide"><span>Prices, one per line: ZONE=AMOUNT</span><textarea name="prices" rows={4} required placeholder={'SILVER=160\nGOLD=220'} /></label>
-              <button className="action-button primary" type="submit">Create show</button>
+              <AdminSubmitButton pendingLabel="Scheduling...">Create show</AdminSubmitButton>
             </form>
           </PremiumCard>
 
@@ -394,7 +412,7 @@ export default async function TheatreManagementPage({
                           <label className="admin-field wide"><span>Reason</span><textarea name="reason" rows={3} required={hasBookings} placeholder="Explain why the show time or authority is changing." /></label>
                           {hasBookings ? <label className="admin-inline"><input type="checkbox" name="confirmReschedule" required /> Confirm notification and rescheduling of affected bookings</label> : null}
                           <div className="meta-row">
-                            <button className="action-button primary" type="submit">Update this show</button>
+                            <AdminSubmitButton pendingLabel="Updating...">Update this show</AdminSubmitButton>
                             <Link className="action-button" href="/admin/theatre-management?tab=scheduling">Close</Link>
                           </div>
                         </form>
@@ -404,7 +422,7 @@ export default async function TheatreManagementPage({
                           <p className="eyebrow">Cancel existing show</p>
                           <label className="admin-field wide"><span>Cancellation reason</span><textarea name="reason" rows={4} required /></label>
                           <label className="admin-inline"><input type="checkbox" name="confirmCancellation" required /> I understand that bookings, refunds, notifications, and local synchronization may be affected</label>
-                          <button className="action-button warn" type="submit">Cancel this show</button>
+                          <AdminSubmitButton variant="warn" pendingLabel="Cancelling...">Cancel this show</AdminSubmitButton>
                         </form>
                       </div>
                     ) : null}

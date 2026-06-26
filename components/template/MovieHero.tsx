@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import type { CentralMovieDetail } from '../../lib/central-data';
 
 function youtubeId(url?: string | null) {
@@ -25,9 +26,10 @@ export default function MovieHero({ movie }: { movie: CentralMovieDetail }) {
       >
         <div
           className="movie-detail-poster"
-          style={movie.posterUrl ? { backgroundImage: `url("${movie.posterUrl}")` } : undefined}
           aria-label={`${movie.title} poster`}
-        />
+        >
+          {movie.posterUrl ? <Image src={movie.posterUrl} alt={`${movie.title} poster`} fill sizes="(max-width: 760px) 42vw, 220px" priority /> : null}
+        </div>
         <div className="movie-detail-title">
           <p className="public-eyebrow">Now showing</p>
           <h1>{movie.title}</h1>

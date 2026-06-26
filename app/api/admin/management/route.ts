@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   adminErrorPayload,
   cancelShow,
+  createMovie,
   createScreenWithSeatMap,
   createShow,
   createTheatre,
@@ -11,10 +12,11 @@ import {
   listAdminManagementData,
   mutationResult,
   requireAdminApi,
+  updateMovie,
+  updateScreen,
   updateScreenSeatMap,
   updateShowSchedule,
   updateTheatre,
-  upsertMovie,
   validateSeatMapJson
 } from '../../../../lib/admin-management';
 
@@ -56,8 +58,10 @@ export async function POST(request: NextRequest) {
     if (action === 'THEATRE_UPDATE') return responseFor(await mutationResult(() => updateTheatre(session, payload)));
     if (action === 'THEATRE_DELETE') return responseFor(await mutationResult(async () => { await deleteTheatre(session, String(payload.id ?? '')); return { id: String(payload.id ?? '') }; }));
     if (action === 'SCREEN_CREATE') return responseFor(await mutationResult(() => createScreenWithSeatMap(session, payload)), 201);
+    if (action === 'SCREEN_UPDATE') return responseFor(await mutationResult(() => updateScreen(session, payload)));
     if (action === 'SCREEN_SEAT_MAP_VERSION') return responseFor(await mutationResult(() => updateScreenSeatMap(session, payload)));
-    if (action === 'MOVIE_UPSERT') return responseFor(await mutationResult(() => upsertMovie(session, payload)));
+    if (action === 'MOVIE_CREATE') return responseFor(await mutationResult(() => createMovie(session, payload)), 201);
+    if (action === 'MOVIE_UPDATE') return responseFor(await mutationResult(() => updateMovie(session, payload)));
     if (action === 'MOVIE_DELETE') return responseFor(await mutationResult(async () => { await deleteMovie(session, String(payload.id ?? '')); return { id: String(payload.id ?? '') }; }));
     if (action === 'SHOW_CREATE') return responseFor(await mutationResult(() => createShow(session, payload)), 201);
     if (action === 'SHOW_UPDATE') return responseFor(await mutationResult(() => updateShowSchedule(session, payload)));

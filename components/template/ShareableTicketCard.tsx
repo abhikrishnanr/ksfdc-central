@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { LayoutGrid, ScanLine, X } from 'lucide-react';
 import type { BookingShowDetail } from '../../lib/central-data';
+import { formatShowDateTimeWithDaypart } from '../../lib/show-time';
 import TicketSeatLayoutModal from './TicketSeatLayoutModal';
 
 export type ShareableTicketSeatGroup = {
@@ -37,7 +38,7 @@ function money(value: number) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value);
 }
 
-function formatTime(value: string) {
+function formatDateTime(value: string) {
   return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(value));
 }
 
@@ -128,7 +129,7 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
     ctx.fillText(ticket.movieTitle, 48, poster ? 420 : 88, 780);
     ctx.font = '400 26px Arial';
     ctx.fillText(`${ticket.theatreName} - ${ticket.screenName}`, 48, poster ? 462 : 132, 780);
-    ctx.fillText(formatTime(ticket.showTime), 48, poster ? 500 : 170, 780);
+    ctx.fillText(formatShowDateTimeWithDaypart(ticket.showTime), 48, poster ? 500 : 170, 780);
     ctx.fillStyle = '#34d399';
     ctx.font = '700 34px Arial';
     ctx.fillText(statusLabel(ticket.status), 48, poster ? 565 : 230);
@@ -166,7 +167,7 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
     }
     await navigator.share({
       title: ticket.ticketNumber,
-      text: `${ticket.movieTitle} - ${ticket.theatreName} - ${formatTime(ticket.showTime)}`,
+      text: `${ticket.movieTitle} - ${ticket.theatreName} - ${formatShowDateTimeWithDaypart(ticket.showTime)}`,
       url: ticket.verificationUrl
     }).catch(() => undefined);
   }
@@ -194,7 +195,7 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
           <div className="ticket-detail-grid">
             <span>Theatre</span><strong>{ticket.theatreName}</strong>
             <span>Screen</span><strong>{ticket.screenName}</strong>
-            <span>Show time</span><strong>{formatTime(ticket.showTime)}</strong>
+            <span>Show time</span><strong>{formatShowDateTimeWithDaypart(ticket.showTime)}</strong>
             <span>Payment</span><strong>{ticket.paymentMode ?? 'Recorded'}</strong>
             {ticket.counterCode ? <><span>Counter</span><strong>{ticket.counterCode}</strong></> : null}
           </div>
@@ -228,7 +229,7 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
           <p>NOW SHOWING</p><h2>{ticket.movieTitle}</h2>
           <div className="thermal-detail-grid">
             <span><small>SCREEN</small><strong>{ticket.screenName}</strong></span>
-            <span><small>SHOW TIME</small><strong>{formatTime(ticket.showTime)}</strong></span>
+            <span><small>SHOW TIME</small><strong>{formatShowDateTimeWithDaypart(ticket.showTime)}</strong></span>
           </div>
         </section>
         <section className="thermal-seat-list">
@@ -247,7 +248,7 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
         </section>
         <footer className="thermal-ticket-footer">
           <p>{ticket.counterCode ? `Counter ${ticket.counterCode} - ` : ''}Ticket {ticket.ticketNumber}</p>
-          <p>Issued {formatTime(ticket.issuedAt)}</p><strong>THANK YOU. ENJOY THE SHOW!</strong>
+          <p>Issued {formatDateTime(ticket.issuedAt)}</p><strong>THANK YOU. ENJOY THE SHOW!</strong>
         </footer>
       </article>
       <div className="ticket-actions no-print">

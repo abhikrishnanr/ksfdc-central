@@ -4815,3 +4815,98 @@ html[data-theme="light"],
     grid-template-columns: 1fr;
   }
 }
+
+.poster-upload-field { align-content: start; }
+.poster-upload-field input[type="file"] { min-height: 44px; }
+.poster-upload-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  min-height: 180px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 84%, var(--text) 8%);
+  color: var(--muted);
+}
+.poster-upload-preview img,
+.poster-frame img,
+.public-movie-poster img,
+.movie-detail-poster img { object-fit: cover; }
+
+.inline-spinner {
+  animation: spin 800ms linear infinite;
+  margin-right: 0.4rem;
+  vertical-align: -0.15em;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.skeleton-block {
+  width: 100%;
+  min-height: 96px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.16), rgba(148, 163, 184, 0.32), rgba(148, 163, 184, 0.16));
+  background-size: 220% 100%;
+  animation: skeleton-pulse 1200ms ease-in-out infinite;
+}
+.skeleton-block.tall { min-height: 132px; }
+.skeleton-block.list { min-height: 260px; }
+.skeleton-block.card { min-height: 220px; }
+@keyframes skeleton-pulse {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.management-module-nav {
+  padding: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.seat-row.pathway-row,
+.checker-hall-row.pathway-row {
+  min-height: clamp(22px, 3.8vh, 46px);
+  margin: 0.35rem 0;
+  border: 0;
+  background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.12), transparent);
+}
+.row-label.empty { visibility: hidden; }
+
+.public-seat-selection-layout:fullscreen {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+  padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+  background: var(--bg);
+}
+.public-seat-selection-layout:fullscreen .bms-seat-map-shell {
+  min-height: 0;
+  height: auto;
+}
+.public-seat-selection-layout:fullscreen .unified-seat-viewport,
+.public-seat-selection-layout .unified-seat-shell.is-fullscreen .unified-seat-viewport {
+  height: calc(100dvh - 10rem);
+}
+.public-seat-selection-layout:fullscreen .booking-summary-bar {
+  position: relative;
+  inset: auto;
+  z-index: 5;
+  margin: 0;
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+@media print {
+  .no-print,
+  .site-header,
+  .site-footer,
+  .ticket-actions {
+    display: none !important;
+  }
+  body { background: #fff !important; }
+  .share-ticket-wrap { display: block; }
+}

@@ -34,7 +34,7 @@ export default async function SeatLayoutsAdminPage() {
           <div className="metric-strip" style={{ marginTop: 16 }}>
             <MetricTile label="Total seats" value={layout.totalSeats} />
             <MetricTile label="Gaps / aisles" value={layout.gapCount} />
-            <MetricTile label="Rows" value={layout.rows.map((row) => row.rowLabel).join(', ')} />
+            <MetricTile label="Rows" value={layout.rows.filter((row) => row.rowLabel).map((row) => row.rowLabel).join(', ') || 'Pathway-only draft'} />
           </div>
           <div className="meta-row" style={{ marginTop: 16 }}>
             {layout.zones.map((zone) => <StatusBadge key={zone.zone} tone="violet">{zone.zone}: INR {zone.amount}</StatusBadge>)}
@@ -42,9 +42,9 @@ export default async function SeatLayoutsAdminPage() {
           <div className="seat-shell" style={{ marginTop: 18 }}>
             <div className="screen-banner">SCREEN THIS SIDE</div>
             <div className="seat-map">
-              {layout.rows.map((row) => (
-                <div className="seat-row" key={row.rowLabel}>
-                  <strong className="row-label">{row.rowLabel}</strong>
+              {layout.rows.map((row, rowIndex) => (
+                <div className={`seat-row${row.isPathway || row.cells.length === 0 ? ' pathway-row' : ''}`} key={row.rowKey ?? row.rowLabel ?? `row-${rowIndex}`}>
+                  {row.isPathway || row.cells.length === 0 ? null : <strong className="row-label">{row.rowLabel}</strong>}
                   {row.cells.map((cell) => (
                     <span
                       key={cell.cellId}
