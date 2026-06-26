@@ -9,8 +9,9 @@ import { listAdminManagementData } from '../../../../../../lib/admin-management'
 import { updateMovieAction } from '../../../../movie-management/actions';
 import { AdminField, ManagementNav } from '../../../_module';
 
-export default async function EditMoviePage({ params }: { params: Promise<{ movieId: string }> }) {
+export default async function EditMoviePage({ params, searchParams }: { params: Promise<{ movieId: string }>; searchParams?: Promise<{ movieError?: string }> }) {
   const { movieId } = await params;
+  const query = await searchParams;
   await requireCentralRole(['SUPER_ADMIN']);
   const data = await listAdminManagementData();
   const movie = (data.movies as Array<Record<string, unknown>>).find((row) => String(row.id) === movieId);
@@ -19,8 +20,10 @@ export default async function EditMoviePage({ params }: { params: Promise<{ movi
     <section className="grid" style={{ gap: 22 }}>
       <PageHeader eyebrow="Edit movie" title={String(movie.title)} description="This update targets the existing movie primary key only." />
       <ManagementNav />
+      {query?.movieError ? <PremiumCard><div role="alert" className="admin-error-banner">{query.movieError}</div></PremiumCard> : null}
       <PremiumCard>
         <form className="admin-form admin-form-wide" action={updateMovieAction}>
+          <input type="hidden" name="returnTo" value={`/admin/theatre-management/movies/${encodeURIComponent(movieId)}/edit`} />
           <input type="hidden" name="id" value={movieId} />
           <AdminField label="Title" name="title" defaultValue={String(movie.title)} required />
           <AdminField label="Language" name="language" defaultValue={String(movie.language ?? '')} />

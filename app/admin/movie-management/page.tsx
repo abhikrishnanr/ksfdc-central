@@ -23,7 +23,12 @@ function Field({ label, name, defaultValue, required = false, type = 'text' }: {
   );
 }
 
-export default async function MovieManagementPage() {
+export default async function MovieManagementPage({
+  searchParams
+}: {
+  searchParams?: Promise<{ movieError?: string }>;
+}) {
+  const params = await searchParams;
   await requireCentralRole(['SUPER_ADMIN']);
   const data = await listAdminManagementData();
   const movies = data.movies as Array<Record<string, unknown>>;
@@ -37,6 +42,14 @@ export default async function MovieManagementPage() {
         actions={<ActionButton href="/admin/theatre-management" variant="primary">Scheduling</ActionButton>}
       />
 
+      {params?.movieError ? (
+        <PremiumCard>
+          <div role="alert" className="admin-error-banner">
+            {params.movieError}
+          </div>
+        </PremiumCard>
+      ) : null}
+
       <section className="grid auto">
         <MetricTile label="Movies" value={movies.length} />
         <MetricTile label="Active" value={movies.filter((movie) => String(movie.status) === 'ACTIVE').length} />
@@ -47,6 +60,7 @@ export default async function MovieManagementPage() {
         <p className="eyebrow">Create movie</p>
         <h2>New movie details</h2>
         <form className="admin-form admin-form-wide" action={createMovieAction}>
+          <input type="hidden" name="returnTo" value="/admin/movie-management" />
           <Field label="Movie ID" name="id" />
           <Field label="Title" name="title" required />
           <Field label="Language" name="language" />
@@ -80,6 +94,7 @@ export default async function MovieManagementPage() {
               <MetricTile label="Shows" value={String(movie.showCount ?? 0)} />
             </div>
             <form className="admin-form compact" action={updateMovieAction}>
+              <input type="hidden" name="returnTo" value="/admin/movie-management" />
               <input type="hidden" name="id" value={String(movie.id)} />
               <Field label="Title" name="title" defaultValue={String(movie.title)} required />
               <Field label="Language" name="language" defaultValue={String(movie.language ?? '')} />
@@ -91,6 +106,7 @@ export default async function MovieManagementPage() {
             </form>
             {Number(movie.showCount ?? 0) === 0 ? (
               <form action={deleteMovieAction} className="admin-form compact danger-form">
+                <input type="hidden" name="returnTo" value="/admin/movie-management" />
                 <input type="hidden" name="id" value={String(movie.id)} />
                 <AdminSubmitButton variant="warn" pendingLabel="Deleting...">Delete movie</AdminSubmitButton>
               </form>

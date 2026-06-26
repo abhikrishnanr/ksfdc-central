@@ -4828,12 +4828,42 @@ html[data-theme="light"],
   border: 1px solid var(--line);
   border-radius: 8px;
   background: color-mix(in srgb, var(--panel) 84%, var(--text) 8%);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
   color: var(--muted);
 }
 .poster-upload-preview img,
 .poster-frame img,
 .public-movie-poster img,
 .movie-detail-poster img { object-fit: cover; }
+
+.admin-error-banner {
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  border-radius: 8px;
+  background: rgba(127, 29, 29, 0.22);
+  color: #fecaca;
+  padding: 0.85rem 1rem;
+  font-weight: 700;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+[data-theme="light"] .admin-error-banner {
+  background: #fff1f2;
+  border-color: #fb7185;
+  color: #9f1239;
+}
 
 .inline-spinner {
   animation: spin 800ms linear infinite;

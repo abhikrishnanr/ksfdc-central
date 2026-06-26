@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect, unstable_rethrow } from 'next/navigation';
 import { requireCentralRole } from '../../../lib/auth';
 import { createMovie, deleteMovie, updateMovie } from '../../../lib/admin-management';
 import { removeStoredPoster, storeMoviePoster } from '../../../lib/poster-storage';
@@ -37,32 +38,50 @@ function refreshMovieRoutes(movieId?: string | null) {
   }
 }
 
+function redirectWithMovieError(formData: FormData, error: unknown): never {
+  unstable_rethrow(error);
+  const message = error instanceof Error ? error.message : 'Unable to save movie.';
+  const returnTo = String(formData.get('returnTo') ?? '/admin/movie-management');
+  const separator = returnTo.includes('?') ? '&' : '?';
+  redirect(`${returnTo}${separator}movieError=${encodeURIComponent(message)}`);
+}
+
 export async function createMovieAction(formData: FormData) {
-  const session = await requireCentralRole(['SUPER_ADMIN']);
-  const { payload, uploadedPosterPath } = await moviePayload(formData);
+  let uploadedPosterPath: string | null = null;
   try {
+    const session = await requireCentralRole(['SUPER_ADMIN']);
+    const prepared = await moviePayload(formData);
+    const payload = prepared.payload;
+    uploadedPosterPath = prepared.uploadedPosterPath;
     const result = await createMovie(session, payload);
     refreshMovieRoutes(result.id);
   } catch (error) {
     await removeStoredPoster(uploadedPosterPath);
-    throw error;
+    redirectWithMovieError(formData, error);
   }
 }
 
 export async function updateMovieAction(formData: FormData) {
-  const session = await requireCentralRole(['SUPER_ADMIN']);
-  const { payload, uploadedPosterPath } = await moviePayload(formData);
+  let uploadedPosterPath: string | null = null;
   try {
+    const session = await requireCentralRole(['SUPER_ADMIN']);
+    const prepared = await moviePayload(formData);
+    const payload = prepared.payload;
+    uploadedPosterPath = prepared.uploadedPosterPath;
     const result = await updateMovie(session, payload);
     refreshMovieRoutes(result.id);
   } catch (error) {
     await removeStoredPoster(uploadedPosterPath);
-    throw error;
+    redirectWithMovieError(formData, error);
   }
 }
 
 export async function deleteMovieAction(formData: FormData) {
-  const session = await requireCentralRole(['SUPER_ADMIN']);
-  await deleteMovie(session, String(formData.get('id') ?? ''));
-  refreshMovieRoutes();
+  try {
+    const session = await requireCentralRole(['SUPER_ADMIN']);
+    await deleteMovie(session, String(formData.get('id') ?? ''));
+    refreshMovieRoutes();
+  } catch (error) {
+    redirectWithMovieError(formData, error);
+  }
 }

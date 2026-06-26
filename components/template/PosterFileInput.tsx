@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
 export default function PosterFileInput({ currentPosterUrl, label = 'Poster image' }: { currentPosterUrl?: string | null; label?: string }) {
@@ -23,16 +22,12 @@ export default function PosterFileInput({ currentPosterUrl, label = 'Poster imag
           setPreviewUrl(file ? URL.createObjectURL(file) : null);
         }}
       />
-      <span className="poster-upload-preview">
+      <span
+        className="poster-upload-preview"
+        style={previewUrl || currentPosterUrl ? { backgroundImage: `url("${previewUrl ?? currentPosterUrl}")` } : undefined}
+      >
         {previewUrl || currentPosterUrl ? (
-          <Image
-            src={previewUrl ?? currentPosterUrl ?? ''}
-            alt="Selected poster preview"
-            width={120}
-            height={180}
-            sizes="120px"
-            unoptimized={Boolean(previewUrl)}
-          />
+          <span className="sr-only">Selected poster preview</span>
         ) : (
           <strong>No poster selected</strong>
         )}
