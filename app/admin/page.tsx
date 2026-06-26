@@ -29,6 +29,8 @@ export default async function AdminPage() {
         actions={(
           <>
             <ActionButton href="/admin/sync-monitor" variant="primary">Sync monitor</ActionButton>
+            <ActionButton href="/admin/theatre-management">Scheduling</ActionButton>
+            {!session.theatreId ? <ActionButton href="/admin/movie-management">Movies</ActionButton> : null}
             <ActionButton href="/admin/reconciliation">Reconciliation</ActionButton>
             <ActionButton href="/admin/reports">Reports</ActionButton>
             <RefreshTheatreSeatMirrorButton />

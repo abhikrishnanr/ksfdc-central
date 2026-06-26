@@ -20,13 +20,11 @@ function applyTheme(theme: ThemeMode) {
 }
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<ThemeMode>('dark');
+  const [theme, setTheme] = useState<ThemeMode>(() => preferredTheme());
 
   useEffect(() => {
-    const initial = preferredTheme();
-    setTheme(initial);
-    applyTheme(initial);
-  }, []);
+    applyTheme(theme);
+  }, [theme]);
 
   function toggleTheme() {
     const next = theme === 'dark' ? 'light' : 'dark';

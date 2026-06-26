@@ -6,21 +6,21 @@ INSERT INTO ticket_checker_users (id, username, password_hash, display_name, the
 VALUES ('TICKET_CHECKER_DEFAULT', 'ticketchecker', '$2b$10$JrYpRSUApTKeBwqHlNGEAeGcyPPP6MRJ7egLLJz96bIwN98hrQlwG', 'Ticket Checker', NULL, TRUE)
 ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), is_active = TRUE;
 
-INSERT INTO theatres (id, code, name, city, status)
-VALUES ('TH_TVM001', 'TH_TVM001', 'KSFDC Demo Theatre', 'Thiruvananthapuram', 'ACTIVE')
-ON DUPLICATE KEY UPDATE name = VALUES(name), city = VALUES(city), status = VALUES(status);
+INSERT INTO theatres (id, code, name, city, status, address, contact_phone, timezone)
+VALUES ('TH_TVM001', 'TH_TVM001', 'KSFDC Demo Theatre', 'Thiruvananthapuram', 'ACTIVE', 'Demo road, Thiruvananthapuram', '+91-0000000000', 'Asia/Kolkata')
+ON DUPLICATE KEY UPDATE name = VALUES(name), city = VALUES(city), status = VALUES(status), address = VALUES(address), contact_phone = VALUES(contact_phone), timezone = VALUES(timezone);
 
-INSERT INTO screens (id, theatre_id, code, name)
-VALUES ('SCREEN001', 'TH_TVM001', 'SCREEN001', 'Screen 1')
-ON DUPLICATE KEY UPDATE name = VALUES(name);
+INSERT INTO screens (id, theatre_id, code, name, status, capacity)
+VALUES ('SCREEN001', 'TH_TVM001', 'SCREEN001', 'Screen 1', 'ACTIVE', 43)
+ON DUPLICATE KEY UPDATE name = VALUES(name), status = VALUES(status), capacity = VALUES(capacity);
 
-INSERT INTO movies (id, title, language, duration_minutes, certificate, status)
-VALUES ('MOV_DEMO_001', 'Demo Movie', 'Malayalam', 142, 'U/A', 'ACTIVE')
-ON DUPLICATE KEY UPDATE title = VALUES(title), language = VALUES(language), duration_minutes = VALUES(duration_minutes), certificate = VALUES(certificate), status = VALUES(status);
+INSERT INTO movies (id, title, language, duration_minutes, certificate, status, poster_metadata)
+VALUES ('MOV_DEMO_001', 'Demo Movie', 'Malayalam', 142, 'U/A', 'ACTIVE', JSON_OBJECT('storage','PLACEHOLDER','fileName','demo-poster.webp'))
+ON DUPLICATE KEY UPDATE title = VALUES(title), language = VALUES(language), duration_minutes = VALUES(duration_minutes), certificate = VALUES(certificate), status = VALUES(status), poster_metadata = VALUES(poster_metadata);
 
-INSERT INTO seat_layouts (id, theatre_id, screen_id, name, screen_side_label, is_active)
-VALUES ('LAYOUT_SCREEN001_V1', 'TH_TVM001', 'SCREEN001', 'Screen 1 Canonical Layout V1', 'SCREEN THIS SIDE', TRUE)
-ON DUPLICATE KEY UPDATE theatre_id = VALUES(theatre_id), screen_id = VALUES(screen_id), name = VALUES(name), screen_side_label = VALUES(screen_side_label), is_active = VALUES(is_active);
+INSERT INTO seat_layouts (id, theatre_id, screen_id, name, screen_side_label, is_active, version_no, status, seat_count, layout_json, source_filename)
+VALUES ('LAYOUT_SCREEN001_V1', 'TH_TVM001', 'SCREEN001', 'Screen 1 Canonical Layout V1', 'SCREEN THIS SIDE', TRUE, 1, 'ACTIVE', 43, JSON_OBJECT('name','Screen 1 Canonical Layout V1','source','seed'), 'seed-layout.json')
+ON DUPLICATE KEY UPDATE theatre_id = VALUES(theatre_id), screen_id = VALUES(screen_id), name = VALUES(name), screen_side_label = VALUES(screen_side_label), is_active = VALUES(is_active), version_no = VALUES(version_no), status = VALUES(status), seat_count = VALUES(seat_count), layout_json = VALUES(layout_json), source_filename = VALUES(source_filename);
 
 DELETE FROM seat_layout_seats WHERE layout_id = 'LAYOUT_SCREEN001_V1';
 INSERT INTO seat_layout_seats (layout_id, seat_id, row_label, seat_number, zone_code, item_type, display_order, gap_width, is_blocked) VALUES
@@ -84,11 +84,11 @@ INSERT INTO seat_layout_seats (layout_id, seat_id, row_label, seat_number, zone_
 ('LAYOUT_SCREEN001_V1','H8','H','8','SILVER','BLOCKED',9,NULL,TRUE)
 ;
 
-INSERT INTO shows (id, movie_id, theatre_id, screen_id, layout_id, show_time, authority_mode, status) VALUES
-('SHOW_TODAY_001', 'MOV_DEMO_001', 'TH_TVM001', 'SCREEN001', 'LAYOUT_SCREEN001_V1', TIMESTAMP(CURRENT_DATE, '11:00:00'), 'LOCAL_AUTHORITY_ONLINE', 'OPEN'),
-('SHOW_TODAY_002', 'MOV_DEMO_001', 'TH_TVM001', 'SCREEN001', 'LAYOUT_SCREEN001_V1', TIMESTAMP(CURRENT_DATE, '14:30:00'), 'CENTRAL_AUTHORITY', 'OPEN'),
-('SHOW_TODAY_003', 'MOV_DEMO_001', 'TH_TVM001', 'SCREEN001', 'LAYOUT_SCREEN001_V1', TIMESTAMP(CURRENT_DATE, '19:00:00'), 'LOCAL_AUTHORITY_ONLINE', 'OPEN')
-ON DUPLICATE KEY UPDATE theatre_id = VALUES(theatre_id), screen_id = VALUES(screen_id), layout_id = VALUES(layout_id), show_time = VALUES(show_time), authority_mode = VALUES(authority_mode), status = VALUES(status);
+INSERT INTO shows (id, movie_id, theatre_id, screen_id, layout_id, show_time, show_end_time, booking_opens_at, booking_closes_at, cleaning_buffer_minutes, authority_mode, status) VALUES
+('SHOW_TODAY_001', 'MOV_DEMO_001', 'TH_TVM001', 'SCREEN001', 'LAYOUT_SCREEN001_V1', TIMESTAMP(CURRENT_DATE, '11:00:00'), TIMESTAMP(CURRENT_DATE, '13:22:00'), TIMESTAMP(DATE_SUB(CURRENT_DATE, INTERVAL 1 DAY), '09:00:00'), TIMESTAMP(CURRENT_DATE, '11:15:00'), 20, 'LOCAL_AUTHORITY_ONLINE', 'OPEN'),
+('SHOW_TODAY_002', 'MOV_DEMO_001', 'TH_TVM001', 'SCREEN001', 'LAYOUT_SCREEN001_V1', TIMESTAMP(CURRENT_DATE, '14:30:00'), TIMESTAMP(CURRENT_DATE, '16:52:00'), TIMESTAMP(DATE_SUB(CURRENT_DATE, INTERVAL 1 DAY), '09:00:00'), TIMESTAMP(CURRENT_DATE, '14:45:00'), 20, 'CENTRAL_AUTHORITY', 'OPEN'),
+('SHOW_TODAY_003', 'MOV_DEMO_001', 'TH_TVM001', 'SCREEN001', 'LAYOUT_SCREEN001_V1', TIMESTAMP(CURRENT_DATE, '19:00:00'), TIMESTAMP(CURRENT_DATE, '21:22:00'), TIMESTAMP(DATE_SUB(CURRENT_DATE, INTERVAL 1 DAY), '09:00:00'), TIMESTAMP(CURRENT_DATE, '19:15:00'), 20, 'LOCAL_AUTHORITY_OFFLINE', 'OPEN')
+ON DUPLICATE KEY UPDATE theatre_id = VALUES(theatre_id), screen_id = VALUES(screen_id), layout_id = VALUES(layout_id), show_time = VALUES(show_time), show_end_time = VALUES(show_end_time), booking_opens_at = VALUES(booking_opens_at), booking_closes_at = VALUES(booking_closes_at), cleaning_buffer_minutes = VALUES(cleaning_buffer_minutes), authority_mode = VALUES(authority_mode), status = VALUES(status);
 
 DELETE FROM show_pricing WHERE show_id IN ('SHOW_TODAY_001','SHOW_TODAY_002','SHOW_TODAY_003');
 INSERT INTO show_pricing (show_id, zone_code, amount) VALUES
@@ -98,14 +98,14 @@ INSERT INTO show_pricing (show_id, zone_code, amount) VALUES
 
 DELETE FROM booking_authority_policy WHERE show_id IN ('SHOW_TODAY_001','SHOW_TODAY_002','SHOW_TODAY_003');
 INSERT INTO booking_authority_policy (show_id, channel, authority_mode, is_booking_allowed) VALUES
-('SHOW_TODAY_001','PUBLIC','LOCAL_AUTHORITY_ONLINE',FALSE),('SHOW_TODAY_001','COUNTER','LOCAL_AUTHORITY_ONLINE',TRUE),('SHOW_TODAY_001','AGENT','LOCAL_AUTHORITY_ONLINE',FALSE),
-('SHOW_TODAY_002','PUBLIC','CENTRAL_AUTHORITY',TRUE),('SHOW_TODAY_002','COUNTER','CENTRAL_AUTHORITY',TRUE),('SHOW_TODAY_002','AGENT','CENTRAL_AUTHORITY',TRUE),
-('SHOW_TODAY_003','PUBLIC','LOCAL_AUTHORITY_ONLINE',FALSE),('SHOW_TODAY_003','COUNTER','LOCAL_AUTHORITY_ONLINE',TRUE),('SHOW_TODAY_003','AGENT','LOCAL_AUTHORITY_ONLINE',FALSE);
+('SHOW_TODAY_001','PUBLIC','LOCAL_AUTHORITY_ONLINE',TRUE),('SHOW_TODAY_001','COUNTER','LOCAL_AUTHORITY_ONLINE',TRUE),('SHOW_TODAY_001','AGENT','LOCAL_AUTHORITY_ONLINE',TRUE),
+('SHOW_TODAY_002','PUBLIC','CENTRAL_AUTHORITY',TRUE),('SHOW_TODAY_002','COUNTER','CENTRAL_AUTHORITY',FALSE),('SHOW_TODAY_002','AGENT','CENTRAL_AUTHORITY',TRUE),
+('SHOW_TODAY_003','PUBLIC','LOCAL_AUTHORITY_OFFLINE',FALSE),('SHOW_TODAY_003','COUNTER','LOCAL_AUTHORITY_OFFLINE',TRUE),('SHOW_TODAY_003','AGENT','LOCAL_AUTHORITY_OFFLINE',FALSE);
 
 INSERT INTO show_authority_state (show_id, authority_mode, local_heartbeat_at, pending_sync_events, failed_sync_events) VALUES
 ('SHOW_TODAY_001','LOCAL_AUTHORITY_ONLINE',DATE_SUB(NOW(), INTERVAL 2 MINUTE),0,0),
 ('SHOW_TODAY_002','CENTRAL_AUTHORITY',NULL,0,0),
-('SHOW_TODAY_003','LOCAL_AUTHORITY_ONLINE',DATE_SUB(NOW(), INTERVAL 2 MINUTE),0,0)
+('SHOW_TODAY_003','LOCAL_AUTHORITY_OFFLINE',DATE_SUB(NOW(), INTERVAL 2 MINUTE),0,0)
 ON DUPLICATE KEY UPDATE authority_mode = VALUES(authority_mode), local_heartbeat_at = VALUES(local_heartbeat_at), pending_sync_events = VALUES(pending_sync_events), failed_sync_events = VALUES(failed_sync_events);
 
 INSERT INTO agent_clients (id, name, api_key_hash, status, last_seen_at)

@@ -1,5 +1,12 @@
 SET FOREIGN_KEY_CHECKS = 0;
 DROP VIEW IF EXISTS central_received_local_events;
+DROP TABLE IF EXISTS schedule_sync_acknowledgements;
+DROP TABLE IF EXISTS schedule_sync_outbox;
+DROP TABLE IF EXISTS notification_outbox;
+DROP TABLE IF EXISTS refund_records;
+DROP TABLE IF EXISTS show_cancellations;
+DROP TABLE IF EXISTS show_reschedules;
+DROP TABLE IF EXISTS show_change_history;
 DROP TABLE IF EXISTS central_sync_outbox;
 DROP TABLE IF EXISTS central_sync_conflicts;
 DROP TABLE IF EXISTS central_sync_inbox;

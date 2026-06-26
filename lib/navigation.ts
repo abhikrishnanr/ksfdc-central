@@ -27,6 +27,8 @@ export const publicUserNavigation: NavigationItem[] = [
 
 export const officialNavigation: NavigationItem[] = [
   { label: 'Dashboard', href: '/admin/dashboard' },
+  { label: 'Scheduling', href: '/admin/theatre-management' },
+  { label: 'Movies', href: '/admin/movie-management' },
   { label: 'Shows', href: '/admin/shows' },
   { label: 'Bookings', href: '/admin/reports' },
   { label: 'Reports', href: '/admin/reports' },

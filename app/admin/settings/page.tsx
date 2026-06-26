@@ -3,7 +3,7 @@ import { ActionButton, MetricTile, PageHeader, PremiumCard, StatusBadge } from '
 import { requireCentralRole } from '../../../lib/auth';
 
 export default async function SettingsPage() {
-  await requireCentralRole(['SUPER_ADMIN', 'THEATRE_ADMIN']);
+  const session = await requireCentralRole(['SUPER_ADMIN', 'THEATRE_ADMIN']);
   return (
     <main className="grid">
       <PageHeader
@@ -27,6 +27,8 @@ export default async function SettingsPage() {
           <h2>Admin operations</h2>
           <div className="meta-row" style={{ marginTop: 16 }}>
             <ActionButton href="/admin/sync-monitor" variant="primary">Sync monitor</ActionButton>
+            <ActionButton href="/admin/theatre-management">Theatre scheduling</ActionButton>
+            {session.role === 'SUPER_ADMIN' ? <ActionButton href="/admin/movie-management">Movies</ActionButton> : null}
             <ActionButton href="/admin/reconciliation">Reconciliation</ActionButton>
             <ActionButton href="/admin/seat-layouts">Seat layouts</ActionButton>
           </div>

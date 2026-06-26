@@ -4726,3 +4726,92 @@ html[data-theme="light"],
 [data-theme="light"] .same-day-showtimes .public-eyebrow {
   color: #10201f;
 }
+
+.admin-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.admin-form.admin-form-wide {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-form.compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 0.85rem;
+}
+
+.admin-field {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.admin-field.wide,
+.admin-form > .action-button,
+.admin-inline {
+  grid-column: 1 / -1;
+}
+
+.admin-field span,
+.admin-inline {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.admin-field input,
+.admin-field select,
+.admin-field textarea {
+  min-height: 2.55rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  color: var(--text);
+  background: rgba(255,255,255,0.05);
+}
+
+.admin-field textarea {
+  font-family: inherit;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.admin-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.danger-form {
+  border-top: 1px dashed var(--line);
+  padding-top: 0.85rem;
+}
+
+.muted-note {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+[data-theme="light"] .admin-field input,
+[data-theme="light"] .admin-field select,
+[data-theme="light"] .admin-field textarea {
+  color: #10201f;
+  border-color: rgba(10, 36, 34, 0.18);
+  background: #ffffff;
+}
+
+[data-theme="light"] .admin-field span,
+[data-theme="light"] .admin-inline,
+[data-theme="light"] .muted-note {
+  color: #405654;
+}
+
+@media (max-width: 900px) {
+  .admin-form,
+  .admin-form.admin-form-wide,
+  .admin-form.compact {
+    grid-template-columns: 1fr;
+  }
+}

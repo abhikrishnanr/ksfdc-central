@@ -56,8 +56,12 @@ CREATE TABLE IF NOT EXISTS theatres (
   code VARCHAR(20) NOT NULL UNIQUE,
   name VARCHAR(150) NOT NULL,
   city VARCHAR(100) NOT NULL,
-  status ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  status ENUM('ACTIVE','DISABLED','ARCHIVED','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+  address TEXT NULL,
+  contact_phone VARCHAR(40) NULL,
+  timezone VARCHAR(80) NOT NULL DEFAULT 'Asia/Kolkata',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS screens (
@@ -65,7 +69,10 @@ CREATE TABLE IF NOT EXISTS screens (
   theatre_id VARCHAR(50) NOT NULL,
   code VARCHAR(30) NOT NULL,
   name VARCHAR(100) NOT NULL,
+  status ENUM('ACTIVE','DISABLED') NOT NULL DEFAULT 'ACTIVE',
+  capacity INT NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_screens_theatre_code (theatre_id, code),
   CONSTRAINT fk_screens_theatre FOREIGN KEY (theatre_id) REFERENCES theatres(id)
 );
@@ -85,8 +92,10 @@ CREATE TABLE IF NOT EXISTS movies (
   crew_json JSON NULL,
   formats_json JSON NULL,
   languages_json JSON NULL,
-  status ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  poster_metadata JSON NULL,
+  status ENUM('ACTIVE','DISABLED','ARCHIVED','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS seat_layouts (
@@ -96,9 +105,19 @@ CREATE TABLE IF NOT EXISTS seat_layouts (
   name VARCHAR(150) NOT NULL,
   screen_side_label VARCHAR(80) NOT NULL DEFAULT 'SCREEN THIS SIDE',
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  version_no INT NOT NULL DEFAULT 1,
+  parent_layout_id VARCHAR(100) NULL,
+  status ENUM('ACTIVE','RETIRED') NOT NULL DEFAULT 'ACTIVE',
+  layout_json JSON NULL,
+  source_filename VARCHAR(190) NULL,
+  fingerprint CHAR(64) NULL,
+  seat_count INT NOT NULL DEFAULT 0,
+  created_by VARCHAR(80) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_seat_layouts_screen (screen_id, is_active),
+  INDEX idx_seat_layout_version (screen_id, version_no),
+  INDEX idx_seat_layout_fingerprint (screen_id, fingerprint),
   CONSTRAINT fk_seat_layouts_screen FOREIGN KEY (screen_id) REFERENCES screens(id)
 );
 
@@ -130,10 +149,19 @@ CREATE TABLE IF NOT EXISTS shows (
   screen_id VARCHAR(50) NOT NULL,
   layout_id VARCHAR(100) NOT NULL,
   show_time DATETIME NOT NULL,
+  show_end_time DATETIME NULL,
+  booking_opens_at DATETIME NULL,
+  booking_closes_at DATETIME NULL,
+  cleaning_buffer_minutes INT NOT NULL DEFAULT 20,
   authority_mode ENUM('CENTRAL_AUTHORITY','LOCAL_AUTHORITY_ONLINE','LOCAL_AUTHORITY_OFFLINE','LOCAL_AUTHORITY_COUNTER_ONLY','LOCAL_SYNCING','RETURNING_TO_CENTRAL','SALES_CLOSED') NOT NULL DEFAULT 'CENTRAL_AUTHORITY',
-  status ENUM('SCHEDULED','OPEN','CLOSED','CANCELLED') NOT NULL DEFAULT 'OPEN',
+  status ENUM('SCHEDULED','OPEN','CLOSED','CANCELLED','RESCHEDULED') NOT NULL DEFAULT 'OPEN',
+  reschedule_count INT NOT NULL DEFAULT 0,
+  cancelled_at TIMESTAMP NULL,
+  cancellation_reason TEXT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_shows_time (show_time),
+  INDEX idx_shows_screen_time_status (screen_id, show_time, status),
   CONSTRAINT fk_shows_movie FOREIGN KEY (movie_id) REFERENCES movies(id),
   CONSTRAINT fk_shows_theatre FOREIGN KEY (theatre_id) REFERENCES theatres(id),
   CONSTRAINT fk_shows_screen FOREIGN KEY (screen_id) REFERENCES screens(id),
@@ -398,6 +426,111 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   entity_id VARCHAR(80) NULL,
   metadata JSON NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS show_change_history (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  show_id VARCHAR(80) NOT NULL,
+  action VARCHAR(80) NOT NULL,
+  admin_user_id VARCHAR(80) NULL,
+  reason TEXT NULL,
+  previous_values JSON NULL,
+  new_values JSON NULL,
+  affected_booking_count INT NOT NULL DEFAULT 0,
+  affected_ticket_count INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_show_change_history_show (show_id, created_at)
+);
+
+CREATE TABLE IF NOT EXISTS show_reschedules (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  show_id VARCHAR(80) NOT NULL,
+  previous_show_time DATETIME NOT NULL,
+  new_show_time DATETIME NOT NULL,
+  previous_end_time DATETIME NULL,
+  new_end_time DATETIME NULL,
+  reason TEXT NOT NULL,
+  admin_user_id VARCHAR(80) NULL,
+  affected_booking_count INT NOT NULL DEFAULT 0,
+  affected_ticket_count INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_show_reschedules_show (show_id, created_at)
+);
+
+CREATE TABLE IF NOT EXISTS show_cancellations (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  show_id VARCHAR(80) NOT NULL,
+  reason TEXT NOT NULL,
+  admin_user_id VARCHAR(80) NULL,
+  affected_booking_count INT NOT NULL DEFAULT 0,
+  affected_ticket_count INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_show_cancellation (show_id)
+);
+
+CREATE TABLE IF NOT EXISTS notification_outbox (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  event_id CHAR(36) NOT NULL UNIQUE,
+  channel VARCHAR(30) NOT NULL DEFAULT 'EMAIL',
+  notification_type VARCHAR(80) NOT NULL,
+  recipient VARCHAR(190) NULL,
+  booking_id VARCHAR(100) NULL,
+  show_id VARCHAR(100) NULL,
+  subject VARCHAR(255) NOT NULL,
+  payload JSON NOT NULL,
+  status ENUM('PENDING','SENT','FAILED','SKIPPED') NOT NULL DEFAULT 'PENDING',
+  attempts INT NOT NULL DEFAULT 0,
+  last_error TEXT NULL,
+  available_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_notification_outbox_status (status, available_at),
+  INDEX idx_notification_outbox_show (show_id, created_at)
+);
+
+CREATE TABLE IF NOT EXISTS schedule_sync_outbox (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  event_id CHAR(36) NOT NULL UNIQUE,
+  theatre_id VARCHAR(100) NOT NULL,
+  entity_type VARCHAR(40) NOT NULL,
+  entity_id VARCHAR(100) NOT NULL,
+  event_type VARCHAR(80) NOT NULL,
+  payload JSON NOT NULL,
+  requires_ack TINYINT(1) NOT NULL DEFAULT 0,
+  status ENUM('PENDING','ACKED','FAILED') NOT NULL DEFAULT 'PENDING',
+  retry_count INT NOT NULL DEFAULT 0,
+  error_message TEXT NULL,
+  acked_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_schedule_sync_theatre (theatre_id, id),
+  INDEX idx_schedule_sync_status (status, created_at)
+);
+
+CREATE TABLE IF NOT EXISTS schedule_sync_acknowledgements (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  event_id CHAR(36) NOT NULL,
+  theatre_id VARCHAR(100) NOT NULL,
+  local_sequence_no BIGINT NULL,
+  status ENUM('ACKED','FAILED') NOT NULL DEFAULT 'ACKED',
+  message TEXT NULL,
+  acknowledged_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_schedule_sync_ack_event_theatre (event_id, theatre_id)
+);
+
+CREATE TABLE IF NOT EXISTS refund_records (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  booking_id VARCHAR(100) NOT NULL,
+  payment_id VARCHAR(100) NULL,
+  show_id VARCHAR(100) NOT NULL,
+  amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  status ENUM('REFUND_PENDING','REFUND_PROCESSING','REFUNDED','REFUND_FAILED','NOT_REQUIRED') NOT NULL DEFAULT 'REFUND_PENDING',
+  reason TEXT NULL,
+  gateway_reference VARCHAR(190) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_refund_booking_payment (booking_id, payment_id),
+  INDEX idx_refund_show_status (show_id, status)
 );
 
 CREATE TABLE IF NOT EXISTS ticket_checker_users (

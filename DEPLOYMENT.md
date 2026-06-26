@@ -81,6 +81,46 @@ The central server calls the local theatre server through HTTP APIs only. For lo
 - `CF-Access-Client-Secret`
 - signed `X-KSFDC-*` HMAC headers for protected booking endpoints
 
+## Dynamic theatre/movie/show administration
+
+The central database is now the management source for theatre metadata, screens, seat-map versions, movies, and show schedules. Use:
+
+- `/admin/theatre-management` for theatres, screens, seat-map JSON upload/versioning, show creation, show edits, and cancellation.
+- `/admin/movie-management` for movie catalogue and poster metadata.
+- `/api/admin/management` for authenticated JSON administration actions.
+
+Seat-map JSON is validated server-side before a new layout version is stored. Existing shows keep referencing their original `layout_id`, so later layout versions do not corrupt confirmed bookings.
+
+Show scheduling exposes only these administrator-selectable authority modes:
+
+- `LOCAL_AUTHORITY_ONLINE`: Both Centralised and Local Server Booking
+- `CENTRAL_AUTHORITY`: Centralised Booking Only
+- `LOCAL_AUTHORITY_OFFLINE`: Local Server Booking Only
+
+Local-authority show edits and cancellations are blocked server-side when the theatre heartbeat is stale/offline, untrusted, has failed/pending local events, or when local sequence numbers are not fully synced.
+
+## Schedule synchronization
+
+Schedule metadata changes are written to an idempotent outbox:
+
+```text
+GET  /api/sync/schedule-events?theatreId=THEATRE_ID&afterSequence=0
+POST /api/sync/schedule-events
+```
+
+Both endpoints use the same HMAC/shared-secret sync verification as the existing central/local sync APIs. Local servers should poll events, apply theatre/screen/movie/show metadata updates without overwriting local ticket sales, then acknowledge processed events with:
+
+```json
+{
+  "theatreId": "THEATRE_KAVITHA_KOCHI",
+  "events": [
+    { "eventId": "...", "localSequenceNo": 123, "status": "ACKED" }
+  ]
+}
+```
+
+For local-authority shows, central retains pending schedule sync state until acknowledgement arrives.
+
 ## Test local health from central
 
 After deployment, open:
