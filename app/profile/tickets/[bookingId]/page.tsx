@@ -11,6 +11,7 @@ import { getBookingShow } from '../../../../lib/central-data';
 import { getPublicSession } from '../../../../lib/public-auth';
 import { ensureCentralSyncInbox } from '../../../../lib/sync';
 import { formatShowDateTimeWithDaypart } from '../../../../lib/show-time';
+import { preferredMoviePosterUrl } from '../../../../lib/movie-posters';
 
 function ticketToken(bookingId: string, showId: string) {
   return createHash('sha256').update(`${bookingId}:${showId}:${process.env.TICKET_VERIFY_SECRET ?? 'dev-ticket-verify-secret'}`).digest('hex').slice(0, 24);
@@ -78,7 +79,7 @@ export default async function ProfileTicketDetailPage({ params }: { params: Prom
         screenName: String(booking.screenName),
         movieTitle: String(booking.movieTitle),
         movieId: String(booking.movieId),
-        moviePosterUrl: booking.moviePosterUrl ? String(booking.moviePosterUrl) : null,
+        moviePosterUrl: preferredMoviePosterUrl(String(booking.movieId), booking.moviePosterUrl ? String(booking.moviePosterUrl) : null),
         showTime: new Date(booking.showTime).toISOString(),
         issuedAt: new Date(booking.bookedAt).toISOString(),
         status: String(booking.status),

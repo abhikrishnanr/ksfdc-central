@@ -5,6 +5,7 @@ import { PageHeader } from '../../../components/premium-ui';
 import TicketHistoryTabs, { type TicketHistoryItem } from '../../../components/template/TicketHistoryTabs';
 import { getCentralDbPool } from '../../../lib/db';
 import { getPublicSession } from '../../../lib/public-auth';
+import { preferredMoviePosterUrl } from '../../../lib/movie-posters';
 import PublicEmailLoginPanel from '../PublicEmailLoginPanel';
 
 export default async function ProfileTicketsPage() {
@@ -20,7 +21,7 @@ export default async function ProfileTicketsPage() {
 
   const [tickets] = await getCentralDbPool().query<RowDataPacket[]>(
     `SELECT b.id, b.status, b.total_amount AS totalAmount, b.created_at AS bookedAt,
-            m.title AS movieTitle, m.poster_url AS moviePosterUrl, t.name AS theatreName, sc.name AS screenName, s.show_time AS showTime,
+            m.id AS movieId, m.title AS movieTitle, m.poster_url AS moviePosterUrl, t.name AS theatreName, sc.name AS screenName, s.show_time AS showTime,
             COUNT(DISTINCT i.seat_id) AS seatCount
      FROM central_bookings b
      JOIN shows s ON s.id = b.show_id
@@ -29,7 +30,7 @@ export default async function ProfileTicketsPage() {
      JOIN screens sc ON sc.id = s.screen_id
      LEFT JOIN central_booking_items i ON i.booking_id = b.id
      WHERE b.public_user_id = ? OR b.customer_email = ?
-     GROUP BY b.id, b.status, b.total_amount, b.created_at, m.title, m.poster_url, t.name, sc.name, s.show_time
+     GROUP BY b.id, b.status, b.total_amount, b.created_at, m.id, m.title, m.poster_url, t.name, sc.name, s.show_time
      ORDER BY s.show_time DESC, b.created_at DESC`,
     [session.userId, session.email]
   );
@@ -39,7 +40,7 @@ export default async function ProfileTicketsPage() {
     totalAmount: Number(ticket.totalAmount ?? 0),
     bookedAt: new Date(ticket.bookedAt).toISOString(),
     movieTitle: String(ticket.movieTitle),
-    moviePosterUrl: ticket.moviePosterUrl ? String(ticket.moviePosterUrl) : null,
+    moviePosterUrl: preferredMoviePosterUrl(String(ticket.movieId), ticket.moviePosterUrl ? String(ticket.moviePosterUrl) : null),
     theatreName: String(ticket.theatreName),
     screenName: String(ticket.screenName),
     showTime: new Date(ticket.showTime).toISOString(),

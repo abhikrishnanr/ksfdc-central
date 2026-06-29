@@ -6,6 +6,7 @@ import { ensureCentralSyncInbox } from '../../../lib/sync';
 import ShareableTicketCard, { type ShareableTicketSeatGroup } from '../../../components/template/ShareableTicketCard';
 import { createTicketVerificationToken } from '../../../lib/ticket-verification';
 import { getBookingShow } from '../../../lib/central-data';
+import { preferredMoviePosterUrl } from '../../../lib/movie-posters';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +57,7 @@ export default async function CentralTicketPage({ params }: { params: Promise<{ 
     screenName: String(booking.screenName),
     movieTitle: String(booking.movieTitle),
     movieId: String(booking.movieId),
-    moviePosterUrl: booking.moviePosterUrl ? String(booking.moviePosterUrl) : null,
+    moviePosterUrl: preferredMoviePosterUrl(String(booking.movieId), booking.moviePosterUrl ? String(booking.moviePosterUrl) : null),
     showTime: new Date(booking.showTime).toISOString(),
     issuedAt: new Date(booking.createdAt).toISOString(),
     status: String(booking.status),

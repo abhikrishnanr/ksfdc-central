@@ -3,6 +3,7 @@ import { RowDataPacket } from 'mysql2';
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { getCentralDbPool } from '../../../../../../lib/db';
+import { preferredMoviePosterUrl } from '../../../../../../lib/movie-posters';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,8 +32,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ mov
     'SELECT poster_url AS posterUrl FROM movies WHERE id = ? AND status = ? LIMIT 1',
     [movieId, 'ACTIVE']
   );
-  if (!movie?.posterUrl) return NextResponse.json({ error: 'Poster not found.' }, { status: 404 });
-  const posterUrl = String(movie.posterUrl);
+  const posterUrl = preferredMoviePosterUrl(movieId, movie?.posterUrl ? String(movie.posterUrl) : null);
+  if (!posterUrl) return NextResponse.json({ error: 'Poster not found.' }, { status: 404 });
   if (posterUrl.startsWith('/posters/') || posterUrl.startsWith('/seed/movie-posters/') || posterUrl.startsWith('/uploads/movie-posters/')) {
     const posterPath = path.resolve(process.cwd(), 'public', posterUrl.slice(1));
     if (!LOCAL_POSTER_ROOTS.some((root) => posterPath.startsWith(root + path.sep))) {

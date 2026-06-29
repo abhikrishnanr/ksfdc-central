@@ -7,6 +7,7 @@ import { checkCentralDb, getCentralDbPool } from './db';
 import { ensureCentralHeartbeatTables, ensureCentralMirrorEventsTable, ensureCentralSyncInbox } from './sync';
 import { getLocalShowSeats } from './local-theatre-client';
 import { getBookingAuthorityDecision } from './booking-authority';
+import { preferredMoviePosterUrl } from './movie-posters';
 
 // Caching strategy
 // -----------------
@@ -321,7 +322,7 @@ export async function getTodaysShows() {
       showId: String(row.showId),
       movieId: String(row.movieId),
       movieTitle: String(row.movieTitle),
-      moviePosterUrl: row.moviePosterUrl ? String(row.moviePosterUrl) : null,
+      moviePosterUrl: preferredMoviePosterUrl(String(row.movieId), row.moviePosterUrl ? String(row.moviePosterUrl) : null),
       movieTrailerUrl: row.movieTrailerUrl ? String(row.movieTrailerUrl) : null,
       language: row.language ? String(row.language) : null,
       durationMinutes: row.durationMinutes == null ? null : Number(row.durationMinutes),
@@ -362,7 +363,7 @@ const loadMoviesCached = nextCache(
       durationMinutes: row.durationMinutes == null ? null : Number(row.durationMinutes),
       certificate: row.certificate ? String(row.certificate) : null,
       releaseDate: row.releaseDate ? new Date(row.releaseDate).toISOString().slice(0, 10) : null,
-      posterUrl: row.posterUrl ? String(row.posterUrl) : null,
+      posterUrl: preferredMoviePosterUrl(String(row.id), row.posterUrl ? String(row.posterUrl) : null),
       trailerUrl: row.trailerUrl ? String(row.trailerUrl) : null,
       synopsis: row.synopsis ? String(row.synopsis) : null,
       genres: parseJsonArray(row.genreJson),
@@ -467,7 +468,7 @@ export async function getPublicShowtimes(options: { dayOffset?: number; city?: s
       showId: String(row.showId),
       movieId: String(row.movieId),
       movieTitle: String(row.movieTitle),
-      moviePosterUrl: row.moviePosterUrl ? String(row.moviePosterUrl) : null,
+      moviePosterUrl: preferredMoviePosterUrl(String(row.movieId), row.moviePosterUrl ? String(row.moviePosterUrl) : null),
       movieTrailerUrl: row.movieTrailerUrl ? String(row.movieTrailerUrl) : null,
       language: row.language ? String(row.language) : null,
       durationMinutes: row.durationMinutes == null ? null : Number(row.durationMinutes),
@@ -551,7 +552,7 @@ const loadMovieDetailCached = nextCache(
       durationMinutes: movie.durationMinutes == null ? null : Number(movie.durationMinutes),
       certificate: movie.certificate ? String(movie.certificate) : null,
       releaseDate: movie.releaseDate ? new Date(movie.releaseDate).toISOString().slice(0, 10) : null,
-      posterUrl: movie.posterUrl ? String(movie.posterUrl) : null,
+      posterUrl: preferredMoviePosterUrl(String(movie.id), movie.posterUrl ? String(movie.posterUrl) : null),
       trailerUrl: movie.trailerUrl ? String(movie.trailerUrl) : null,
       synopsis: movie.synopsis ? String(movie.synopsis) : null,
       genres: parseJsonArray(movie.genreJson),
@@ -824,7 +825,7 @@ export async function getBookingShow(showId: string) {
       showId: String(show.showId),
       movieId: String(show.movieId),
       movieTitle: String(show.movieTitle),
-      moviePosterUrl: show.moviePosterUrl ? String(show.moviePosterUrl) : null,
+      moviePosterUrl: preferredMoviePosterUrl(String(show.movieId), show.moviePosterUrl ? String(show.moviePosterUrl) : null),
       movieTrailerUrl: show.movieTrailerUrl ? String(show.movieTrailerUrl) : null,
       language: show.language ? String(show.language) : null,
       durationMinutes: show.durationMinutes == null ? null : Number(show.durationMinutes),
