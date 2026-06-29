@@ -474,8 +474,9 @@ p { color: var(--muted); line-height: 1.6; }
 .seat-sold { background: rgba(251, 113, 133, 0.16); color: #fecdd3; }
 .seat-blocked { background: rgba(148, 163, 184, 0.1); color: #94a3b8; }
 .seat-selected {
-  background: linear-gradient(135deg, rgba(34,211,238,0.38), rgba(167,139,250,0.34));
-  box-shadow: 0 0 20px rgba(34,211,238,0.32);
+  color: #ffffff;
+  background: #0ea5ff;
+  box-shadow: 0 0 22px rgba(14, 165, 255, 0.42);
 }
 
 .sticky-summary {
@@ -1010,9 +1011,9 @@ p { color: var(--muted); line-height: 1.6; }
 
 .seat-button.public.seat-selected {
   color: #ffffff;
-  border-color: #16a34a;
-  background: #16a34a;
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.18);
+  border-color: #38bdf8;
+  background: #0ea5ff;
+  box-shadow: 0 0 0 2px rgba(14, 165, 255, 0.22), 0 0 24px rgba(14, 165, 255, 0.35);
 }
 
 .seat-button.public.seat-sold {
@@ -1797,6 +1798,12 @@ p { color: var(--muted); line-height: 1.6; }
   flex-wrap: wrap;
 }
 
+.seat-legend.public-dark .seat-legend-item.seat-selected {
+  color: #ffffff;
+  background: #0ea5ff;
+  box-shadow: 0 0 20px rgba(14, 165, 255, 0.35);
+}
+
 .zone-seat-group {
   border-top-color: rgba(255,255,255,0.09);
 }
@@ -1826,9 +1833,10 @@ p { color: var(--muted); line-height: 1.6; }
 }
 
 .seat-button.public.seat-selected {
-  color: #03120e;
-  border-color: #34d399;
-  background: #34d399;
+  color: #ffffff;
+  border-color: #38bdf8;
+  background: #0ea5ff;
+  box-shadow: 0 0 0 2px rgba(14, 165, 255, 0.22), 0 0 24px rgba(14, 165, 255, 0.35);
 }
 
 .seat-button.public.seat-sold {
@@ -2999,7 +3007,7 @@ p { color: var(--muted); line-height: 1.6; }
   background: #22c55e;
 }
 
-.minimap-seat.seat-selected { background: #f5b82e; }
+.minimap-seat.seat-selected { background: #0ea5ff; }
 .minimap-seat.seat-sold,
 .minimap-seat.seat-blocked { background: #536071; }
 .minimap-seat.seat-held { background: #f59e0b; }
@@ -4337,7 +4345,7 @@ html[data-theme="light"],
 
 [data-theme="light"] .seat-selected {
   color: #ffffff;
-  background: #04785f;
+  background: #0b7fd3;
 }
 
 [data-theme="light"] .seat-map-toolbar button,
@@ -4670,7 +4678,7 @@ html[data-theme="light"],
 
 [data-theme="light"] .seat-legend.public-dark.unified-seat-legend .seat-legend-item.seat-selected {
   color: #ffffff;
-  background: #04785f;
+  background: #0b7fd3;
 }
 
 [data-theme="light"] .unified-seat-toolbar {
@@ -4703,8 +4711,9 @@ html[data-theme="light"],
 
 [data-theme="light"] .seat-button.public.seat-selected {
   color: #ffffff;
-  border-color: #29d3ad;
-  background: #04785f;
+  border-color: #38bdf8;
+  background: #0b7fd3;
+  box-shadow: 0 0 0 2px rgba(11, 127, 211, 0.22), 0 0 24px rgba(11, 127, 211, 0.32);
 }
 
 [data-theme="light"] .seat-button.public.seat-held {

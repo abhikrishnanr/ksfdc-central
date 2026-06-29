@@ -3,7 +3,7 @@
 import { X } from 'lucide-react';
 import { useEffect } from 'react';
 import type { BookingShowDetail } from '../../lib/central-data';
-import BookMyShowStyleSeatMap from './BookMyShowStyleSeatMap';
+import BookMyShowStyleSeatMap, { ticketSeatKey } from './BookMyShowStyleSeatMap';
 
 type TicketSeatGroup = { zone: string; seats: string[] };
 
@@ -18,7 +18,7 @@ export default function TicketSeatLayoutModal({
   ticketGroups: TicketSeatGroup[];
   onClose: () => void;
 }) {
-  const selectedSeatKeys = ticketGroups.flatMap((group) => group.seats.map((seat) => `${group.zone}::${seat}`));
+  const selectedSeatKeys = ticketGroups.flatMap((group) => group.seats.map((seat) => ticketSeatKey(group.zone, seat)));
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };

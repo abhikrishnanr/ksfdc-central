@@ -25,6 +25,14 @@ function amountForZone(show: BookingShowDetail, zone: string) {
   return show.zoneRates.find((rate) => rate.zone === zone)?.amount ?? null;
 }
 
+function normalizedSeatKeyPart(value: string | null | undefined) {
+  return String(value ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
+}
+
+export function ticketSeatKey(zone: string | null | undefined, seatId: string | null | undefined) {
+  return `${normalizedSeatKeyPart(zone || 'STANDARD')}::${normalizedSeatKeyPart(seatId)}`;
+}
+
 export { STATUS_STYLES };
 
 export default function BookMyShowStyleSeatMap({
@@ -84,6 +92,7 @@ export default function BookMyShowStyleSeatMap({
 
   function hallContent(miniature = false) {
     let activeZone = '';
+    const consumedSelectedKeys = new Set<string>();
     return (
       <div className={`unified-seat-hall${miniature ? ' is-minimap' : ''}`}>
         {show.rows.map((row, rowIndex) => {
@@ -109,8 +118,16 @@ export default function BookMyShowStyleSeatMap({
                     if (cell.kind !== 'SEAT') {
                       return <span className="aisle-gap public" key={cell.cellId} aria-hidden="true" />;
                     }
-                    const seatKey = `${cell.zone ?? 'STANDARD'}::${cell.seatId}`;
-                    const isSelected = Boolean(cell.seatId && (selectedSeatKeys ? selectedSeatKeySet.has(seatKey) : selected.includes(cell.seatId)));
+                    const rowSeatId = row.rowLabel && cell.seatNumber ? `${row.rowLabel}${cell.seatNumber}` : null;
+                    const candidateKeys = Array.from(new Set([
+                      ticketSeatKey(cell.zone, cell.seatId),
+                      rowSeatId ? ticketSeatKey(cell.zone, rowSeatId) : null
+                    ].filter(Boolean) as string[]));
+                    const matchedKey = selectedSeatKeys
+                      ? candidateKeys.find((key) => selectedSeatKeySet.has(key) && !consumedSelectedKeys.has(key))
+                      : null;
+                    const isSelected = Boolean(cell.seatId && (selectedSeatKeys ? matchedKey : selected.includes(cell.seatId)));
+                    if (matchedKey) consumedSelectedKeys.add(matchedKey);
                     const status = isSelected ? 'SELECTED' : cell.status;
                     if (miniature) return <span className={`minimap-seat ${STATUS_STYLES[status].className}`} key={cell.cellId} />;
                     return (
