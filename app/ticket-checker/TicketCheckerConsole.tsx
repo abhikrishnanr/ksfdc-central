@@ -91,7 +91,7 @@ export default function TicketCheckerConsole({ session, theatres }: { session: {
   const [manualValue, setManualValue] = useState('');
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [validating, setValidating] = useState(false);
-  const [layout, setLayout] = useState<{ show: BookingShowDetail; ticketSeats: string[] } | null>(null);
+  const [layout, setLayout] = useState<{ show: BookingShowDetail; ticketSeats: string[]; ticketGroups: Ticket['groups'] } | null>(null);
   const scannerRef = useRef<{ start: (...args: unknown[]) => Promise<unknown>; stop: () => Promise<unknown>; clear: () => void; isScanning?: boolean } | null>(null);
   const cameraStartingRef = useRef(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -235,7 +235,7 @@ export default function TicketCheckerConsole({ session, theatres }: { session: {
     if (!result?.ticket) return;
     const response = await fetch(`/api/ticket-checker/seat-layout?showId=${encodeURIComponent(result.ticket.showId)}&bookingId=${encodeURIComponent(result.ticket.bookingId)}`);
     const payload = await response.json();
-    if (payload.success) setLayout({ show: payload.show, ticketSeats: payload.ticketSeats });
+    if (payload.success) setLayout({ show: payload.show, ticketSeats: payload.ticketSeats, ticketGroups: result.ticket.groups });
   }
 
   function resetChecking() {
@@ -306,7 +306,7 @@ export default function TicketCheckerConsole({ session, theatres }: { session: {
           </div>
         </section>
       )}
-      {layout ? <TicketSeatLayoutModal show={layout.show} ticketSeats={layout.ticketSeats} onClose={() => setLayout(null)} /> : null}
+      {layout ? <TicketSeatLayoutModal show={layout.show} ticketSeats={layout.ticketSeats} ticketGroups={layout.ticketGroups} onClose={() => setLayout(null)} /> : null}
     </section>
   );
 }

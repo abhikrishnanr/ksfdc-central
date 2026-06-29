@@ -1,19 +1,29 @@
 'use client';
 
-import { Minus, Plus, X } from 'lucide-react';
-import { useEffect, useRef } from 'react';
-import { TransformComponent, TransformWrapper, type ReactZoomPanPinchRef } from 'react-zoom-pan-pinch';
+import { X } from 'lucide-react';
+import { useEffect } from 'react';
 import type { BookingShowDetail } from '../../lib/central-data';
+import BookMyShowStyleSeatMap from './BookMyShowStyleSeatMap';
 
-export default function TicketSeatLayoutModal({ show, ticketSeats, onClose }: { show: BookingShowDetail; ticketSeats: string[]; onClose: () => void }) {
-  const selected = new Set(ticketSeats);
-  const transformRef = useRef<ReactZoomPanPinchRef>(null);
+type TicketSeatGroup = { zone: string; seats: string[] };
+
+export default function TicketSeatLayoutModal({
+  show,
+  ticketSeats,
+  ticketGroups,
+  onClose
+}: {
+  show: BookingShowDetail;
+  ticketSeats: string[];
+  ticketGroups: TicketSeatGroup[];
+  onClose: () => void;
+}) {
+  const selectedSeatKeys = ticketGroups.flatMap((group) => group.seats.map((seat) => `${group.zone}::${seat}`));
 
   useEffect(() => {
-    const timer = window.setTimeout(() => transformRef.current?.zoomToElement('.is-ticket-seat', 1.15, 280, 'easeOut'), 120);
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKeyDown);
-    return () => { window.clearTimeout(timer); window.removeEventListener('keydown', onKeyDown); };
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
 
   return (
@@ -23,28 +33,14 @@ export default function TicketSeatLayoutModal({ show, ticketSeats, onClose }: { 
           <div><p className="eyebrow">Your seats</p><h2 id="ticket-seat-layout-title">{show.movieTitle}</h2><p>{show.screenName} - {ticketSeats.join(', ')}</p></div>
           <button className="checker-icon-button" type="button" onClick={onClose} aria-label="Close seat layout"><X /></button>
         </header>
-        <TransformWrapper ref={transformRef} minScale={0.3} maxScale={2.5} initialScale={0.55} centerOnInit centerZoomedOut wheel={{ step: 0.08 }} pinch={{ step: 4 }}>
-          {({ zoomIn, zoomOut, centerView }) => <>
-            <div className="checker-seat-tools">
-              <button type="button" onClick={() => zoomOut(0.15)} aria-label="Zoom out"><Minus size={18} /></button>
-              <button type="button" onClick={() => centerView(0.7, 180)}>Fit hall</button>
-              <button type="button" onClick={() => zoomIn(0.15)} aria-label="Zoom in"><Plus size={18} /></button>
-            </div>
-            <TransformComponent wrapperClass="checker-seat-transform" contentClass="checker-seat-transform-content">
-              <div className="checker-hall-layout">
-                {show.rows.map((row, rowIndex) => (
-                  <div className={`checker-hall-row${row.isPathway || row.cells.length === 0 ? ' pathway-row' : ''}`} key={row.rowKey ?? row.rowLabel ?? `row-${rowIndex}`}>
-                    {row.cells.length === 0 || row.isPathway ? null : <strong>{row.rowLabel}</strong>}
-                    {row.cells.map((cell) => cell.kind === 'SEAT'
-                      ? <span className={selected.has(String(cell.seatId)) ? 'is-ticket-seat' : cell.status === 'SOLD' ? 'is-sold' : ''} key={cell.cellId}>{cell.seatNumber}</span>
-                      : <i style={{ width: Math.max(18, Number(cell.displayOrder) || 18) }} key={cell.cellId} />)}
-                  </div>
-                ))}
-                <div className="checker-screen-line">SCREEN THIS SIDE</div>
-              </div>
-            </TransformComponent>
-          </>}
-        </TransformWrapper>
+        <BookMyShowStyleSeatMap
+          show={show}
+          selected={ticketSeats}
+          selectedSeatKeys={selectedSeatKeys}
+          disabled
+          holdActive={false}
+          onToggle={() => undefined}
+        />
       </section>
     </div>
   );

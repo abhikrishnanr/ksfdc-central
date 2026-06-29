@@ -1,7 +1,7 @@
 'use client';
 
 import { Maximize2, Minimize2, Minus, Plus } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MiniMap, TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
 import type { BookingShowDetail, SeatCell } from '../../lib/central-data';
 
@@ -30,12 +30,14 @@ export { STATUS_STYLES };
 export default function BookMyShowStyleSeatMap({
   show,
   selected,
+  selectedSeatKeys,
   disabled,
   holdActive,
   onToggle
 }: {
   show: BookingShowDetail;
   selected: string[];
+  selectedSeatKeys?: string[];
   disabled: boolean;
   holdActive: boolean;
   onToggle: (cell: SeatCell) => void;
@@ -43,6 +45,7 @@ export default function BookMyShowStyleSeatMap({
   const [scale, setScale] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
   const shellRef = useRef<HTMLElement>(null);
+  const selectedSeatKeySet = useMemo(() => new Set(selectedSeatKeys ?? []), [selectedSeatKeys]);
 
   function fullscreenTarget() {
     return shellRef.current?.closest('.public-seat-selection-layout') as HTMLElement | null ?? shellRef.current;
@@ -106,7 +109,8 @@ export default function BookMyShowStyleSeatMap({
                     if (cell.kind !== 'SEAT') {
                       return <span className="aisle-gap public" key={cell.cellId} aria-hidden="true" />;
                     }
-                    const isSelected = Boolean(cell.seatId && selected.includes(cell.seatId));
+                    const seatKey = `${cell.zone ?? 'STANDARD'}::${cell.seatId}`;
+                    const isSelected = Boolean(cell.seatId && (selectedSeatKeys ? selectedSeatKeySet.has(seatKey) : selected.includes(cell.seatId)));
                     const status = isSelected ? 'SELECTED' : cell.status;
                     if (miniature) return <span className={`minimap-seat ${STATUS_STYLES[status].className}`} key={cell.cellId} />;
                     return (

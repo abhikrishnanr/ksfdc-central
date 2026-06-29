@@ -150,7 +150,7 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
 
     ctx.fillStyle = '#f8fafc';
     ctx.font = '800 50px Arial';
-    ctx.fillText(ticket.movieTitle, 54, 438, 500);
+    ctx.fillText(ticket.movieTitle, 54, 438, 430);
     ctx.font = '700 22px Arial';
     ctx.fillStyle = '#d8eee8';
     ctx.fillText(ticket.theatreName, 54, 482, 500);
@@ -179,19 +179,6 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
     ctx.fillText('SEATS', 78, 725);
     ctx.font = '800 24px Arial';
     ctx.fillText(seatsLine, 78, 760, 560);
-
-    let y = 830;
-    for (const group of ticket.groups) {
-      ctx.fillStyle = 'rgba(45, 212, 191, 0.1)';
-      roundedRect(54, y - 26, 390, 58, 16);
-      ctx.fillStyle = '#2dd4bf';
-      ctx.font = '800 17px Arial';
-      ctx.fillText(group.zone, 76, y);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '900 22px Arial';
-      ctx.fillText(group.seats.join(', '), 205, y, 210);
-      y += 70;
-    }
 
     ctx.fillStyle = '#f5b82e';
     ctx.font = '900 30px Arial';
@@ -319,7 +306,7 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
         {seatLayout ? <button type="button" className="action-button" onClick={() => setShowSeatLayout(true)}><LayoutGrid size={18} /> View seats</button> : null}
         <button type="button" className="action-button" onClick={() => window.print()}>Print</button>
       </div>
-      {showSeatLayout && seatLayout ? <TicketSeatLayoutModal show={seatLayout} ticketSeats={ticketSeats} onClose={() => setShowSeatLayout(false)} /> : null}
+      {showSeatLayout && seatLayout ? <TicketSeatLayoutModal show={seatLayout} ticketSeats={ticketSeats} ticketGroups={ticket.groups} onClose={() => setShowSeatLayout(false)} /> : null}
       {showQr && qrDataUrl ? (
         <div className="ticket-qr-modal" role="dialog" aria-modal="true" aria-label="Ticket QR code" onMouseDown={(event) => event.target === event.currentTarget && setShowQr(false)}>
           <div className="ticket-qr-modal-card">

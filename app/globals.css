@@ -2909,9 +2909,10 @@ p { color: var(--muted); line-height: 1.6; }
   gap: 0.65rem;
   border-bottom: 1px solid rgba(255,255,255,0.12);
   padding: 0 8px 9px;
-  color: #d8dee9;
+  color: #f5b82e;
 }
 
+.unified-zone-heading strong,
 .unified-zone-heading span {
   color: #f5b82e;
   font-weight: 850;
@@ -2931,10 +2932,11 @@ p { color: var(--muted); line-height: 1.6; }
 }
 
 .unified-seat-hall .row-label.public {
-  position: sticky;
-  left: 0;
-  width: 38px;
-  flex: 0 0 38px;
+  position: static;
+  width: 30px;
+  flex: 0 0 30px;
+  margin-right: 0.45rem;
+  color: #f5b82e;
   text-align: center;
 }
 
