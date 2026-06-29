@@ -79,7 +79,7 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
   const seatCount = ticketSeats.length;
 
   useEffect(() => {
-    QRCode.toDataURL(qrPayload, { margin: 1, width: 800, errorCorrectionLevel: 'M' }).then(setQrDataUrl).catch(() => setQrDataUrl(''));
+    QRCode.toDataURL(qrPayload, { margin: 1, width: 520, errorCorrectionLevel: 'M' }).then(setQrDataUrl).catch(() => setQrDataUrl(''));
   }, [qrPayload]);
 
   useEffect(() => {
@@ -96,68 +96,130 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
 
   async function downloadTicket() {
     const canvas = document.createElement('canvas');
-    canvas.width = 900;
-    canvas.height = 1500;
+    canvas.width = 720;
+    canvas.height = 1080;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.fillStyle = '#07090d';
+
+    const roundedRect = (x: number, y: number, width: number, height: number, radius: number) => {
+      ctx.beginPath();
+      ctx.roundRect(x, y, width, height, radius);
+      ctx.fill();
+    };
+
+    const seatsLine = ticket.groups.map((group) => `${group.zone}: ${group.seats.join(', ')}`).join('  |  ');
+    const posterHeight = 380;
+    const margin = 28;
+
+    ctx.fillStyle = '#05070b';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    bg.addColorStop(0, '#071d1a');
+    bg.addColorStop(0.48, '#0a101a');
+    bg.addColorStop(1, '#111827');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     const poster = ticket.moviePosterUrl
       ? await loadImage(`/api/public/movies/${encodeURIComponent(ticket.movieId)}/poster`)
       : null;
     if (poster) {
       ctx.save();
       ctx.beginPath();
-      ctx.roundRect(28, 28, canvas.width - 56, 530, 18);
+      ctx.roundRect(margin, margin, canvas.width - margin * 2, posterHeight, 24);
       ctx.clip();
-      drawCover(ctx, poster, 28, 28, canvas.width - 56, 530);
+      drawCover(ctx, poster, margin, margin, canvas.width - margin * 2, posterHeight);
       const posterShade = ctx.createLinearGradient(0, 100, 0, 558);
-      posterShade.addColorStop(0, 'rgba(7,9,13,0.08)');
-      posterShade.addColorStop(1, 'rgba(7,9,13,0.96)');
+      posterShade.addColorStop(0, 'rgba(7,9,13,0.06)');
+      posterShade.addColorStop(0.48, 'rgba(7,9,13,0.36)');
+      posterShade.addColorStop(1, 'rgba(7,9,13,0.98)');
       ctx.fillStyle = posterShade;
-      ctx.fillRect(28, 28, canvas.width - 56, 530);
+      ctx.fillRect(margin, margin, canvas.width - margin * 2, posterHeight);
       ctx.restore();
     }
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    gradient.addColorStop(0, poster ? 'rgba(17,24,39,0)' : '#111827');
-    gradient.addColorStop(0.55, '#07111f');
-    gradient.addColorStop(1, '#0f172a');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(28, poster ? 470 : 28, canvas.width - 56, poster ? canvas.height - 498 : canvas.height - 56);
+
+    ctx.fillStyle = 'rgba(5, 9, 14, 0.92)';
+    roundedRect(margin, 328, canvas.width - margin * 2, 724, 24);
+    ctx.strokeStyle = 'rgba(45, 212, 191, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(margin + 1, 329, canvas.width - margin * 2 - 2, 722);
+
+    ctx.fillStyle = '#2dd4bf';
+    ctx.font = '800 20px Arial';
+    ctx.fillText('KSFDC TICKETS', 54, 382);
+
     ctx.fillStyle = '#f8fafc';
-    ctx.font = '700 42px Arial';
-    ctx.fillText(ticket.movieTitle, 48, poster ? 420 : 88, 780);
-    ctx.font = '400 26px Arial';
-    ctx.fillText(`${ticket.theatreName} - ${ticket.screenName}`, 48, poster ? 462 : 132, 780);
-    ctx.fillText(formatShowDateTimeWithDaypart(ticket.showTime), 48, poster ? 500 : 170, 780);
+    ctx.font = '800 50px Arial';
+    ctx.fillText(ticket.movieTitle, 54, 438, 500);
+    ctx.font = '700 22px Arial';
+    ctx.fillStyle = '#d8eee8';
+    ctx.fillText(ticket.theatreName, 54, 482, 500);
+    ctx.fillText(`${ticket.screenName} - ${formatShowDateTimeWithDaypart(ticket.showTime)}`, 54, 516, 580);
+
+    ctx.fillStyle = '#f5b82e';
+    roundedRect(504, 366, 126, 108, 20);
+    ctx.fillStyle = '#111827';
+    ctx.font = '900 24px Arial';
+    ctx.fillText('ADMIT', 525, 405);
+    ctx.font = '900 48px Arial';
+    ctx.fillText(String(seatCount), 544, 456);
+
     ctx.fillStyle = '#34d399';
-    ctx.font = '700 34px Arial';
-    ctx.fillText(statusLabel(ticket.status), 48, poster ? 565 : 230);
+    ctx.font = '800 24px Arial';
+    ctx.fillText(statusLabel(ticket.status), 54, 582);
+    ctx.fillStyle = '#b7c6d7';
+    ctx.font = '700 18px Arial';
+    ctx.fillText(`Ticket ${ticket.ticketNumber}`, 54, 616, 420);
+    ctx.fillText(`Booking ${ticket.bookingId}`, 54, 646, 500);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    roundedRect(54, 688, 612, 96, 18);
     ctx.fillStyle = '#f8fafc';
-    ctx.font = '700 28px Arial';
-    ctx.fillText(`Ticket ${ticket.ticketNumber}`, 48, poster ? 625 : 290, 780);
-    ctx.font = '400 24px Arial';
-    ctx.fillText(`Booking ${ticket.bookingId}`, 48, poster ? 665 : 330, 780);
-    let y = poster ? 735 : 400;
+    ctx.font = '900 20px Arial';
+    ctx.fillText('SEATS', 78, 725);
+    ctx.font = '800 24px Arial';
+    ctx.fillText(seatsLine, 78, 760, 560);
+
+    let y = 830;
     for (const group of ticket.groups) {
-      ctx.font = '700 28px Arial';
-      ctx.fillText(group.zone, 48, y);
-      ctx.font = '400 24px Arial';
-      ctx.fillText(group.seats.join(', '), 48, y + 36, 780);
-      y += 90;
+      ctx.fillStyle = 'rgba(45, 212, 191, 0.1)';
+      roundedRect(54, y - 26, 390, 58, 16);
+      ctx.fillStyle = '#2dd4bf';
+      ctx.font = '800 17px Arial';
+      ctx.fillText(group.zone, 76, y);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 22px Arial';
+      ctx.fillText(group.seats.join(', '), 205, y, 210);
+      y += 70;
     }
-    ctx.font = '700 32px Arial';
-    ctx.fillText(money(ticket.totalAmount), 48, 1110);
+
+    ctx.fillStyle = '#f5b82e';
+    ctx.font = '900 30px Arial';
+    ctx.fillText(money(ticket.totalAmount), 54, 1010);
+    ctx.fillStyle = '#d8eee8';
+    ctx.font = '700 18px Arial';
+    ctx.fillText(ticket.paymentMode?.replaceAll('_', ' ') ?? 'RECORDED', 54, 1038, 300);
+
     if (qrDataUrl) {
       const qrImage = new Image();
       qrImage.src = qrDataUrl;
       await new Promise((resolve) => { qrImage.onload = resolve; qrImage.onerror = resolve; });
-      ctx.drawImage(qrImage, 590, 1040, 240, 240);
+      ctx.fillStyle = '#ffffff';
+      roundedRect(494, 830, 150, 150, 18);
+      ctx.drawImage(qrImage, 506, 842, 126, 126);
+      ctx.fillStyle = '#d8eee8';
+      ctx.font = '800 14px Arial';
+      ctx.fillText('SCAN TO VERIFY', 504, 1010);
     }
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.86));
+    if (!blob) return;
     const link = document.createElement('a');
-    link.download = `${ticket.ticketNumber}.png`;
-    link.href = canvas.toDataURL('image/png');
+    const objectUrl = URL.createObjectURL(blob);
+    link.download = `${ticket.ticketNumber}.jpg`;
+    link.href = objectUrl;
     link.click();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
   }
 
   async function shareTicket() {

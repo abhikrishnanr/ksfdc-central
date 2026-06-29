@@ -8,6 +8,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
+    "db:fresh": "node scripts/db-fresh.mjs",
+    "db:seed:posters": "node scripts/db-fresh.mjs --posters-only",
     "test:local-authority-down": "node scripts/test-local-authority-block-when-local-down.mjs"
   },
   "dependencies": {
