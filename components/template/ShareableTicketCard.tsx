@@ -49,6 +49,7 @@ function statusLabel(value: string) {
 function loadImage(src: string) {
   return new Promise<HTMLImageElement | null>((resolve) => {
     const image = new Image();
+    image.crossOrigin = 'anonymous';
     image.onload = () => resolve(image);
     image.onerror = () => resolve(null);
     image.src = src;
@@ -96,8 +97,8 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
 
   async function downloadTicket() {
     const canvas = document.createElement('canvas');
-    canvas.width = 720;
-    canvas.height = 1080;
+    canvas.width = 1080;
+    canvas.height = 1620;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -107,9 +108,81 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
       ctx.fill();
     };
 
-    const seatsLine = ticket.groups.map((group) => `${group.zone}: ${group.seats.join(', ')}`).join('  |  ');
-    const posterHeight = 380;
-    const margin = 28;
+    const wrapText = (text: string, x: number, y: number, maxWidth: number, lineHeight: number, maxLines = 2) => {
+      const words = text.split(/\s+/).filter(Boolean);
+      const lines: string[] = [];
+      let current = '';
+      for (const word of words) {
+        const test = current ? `${current} ${word}` : word;
+        if (ctx.measureText(test).width <= maxWidth || !current) {
+          current = test;
+        } else {
+          lines.push(current);
+          current = word;
+        }
+        if (lines.length === maxLines) break;
+      }
+      if (current && lines.length < maxLines) lines.push(current);
+      lines.forEach((line, index) => ctx.fillText(line, x, y + index * lineHeight, maxWidth));
+      return y + Math.max(lines.length, 1) * lineHeight;
+    };
+
+    const drawTicketShell = () => {
+      const x = 88;
+      const y = 40;
+      const width = 904;
+      const height = 1540;
+      const radius = 42;
+      ctx.save();
+      ctx.fillStyle = '#f8f4e9';
+      ctx.shadowColor = 'rgba(0,0,0,0.46)';
+      ctx.shadowBlur = 40;
+      ctx.shadowOffsetY = 24;
+      roundedRect(x, y, width, height, radius);
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      const punch = (cx: number, cy: number, r: number) => {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+      };
+      for (let cx = x + 74; cx < x + width - 64; cx += 31) {
+        punch(cx, y, 8);
+        punch(cx, y + height, 8);
+      }
+      punch(x, 412, 30);
+      punch(x + width, 412, 30);
+      punch(x, 1206, 30);
+      punch(x + width, 1206, 30);
+      ctx.restore();
+
+      ctx.save();
+      ctx.strokeStyle = '#c6a25c';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.roundRect(x + 1.5, y + 1.5, width - 3, height - 3, radius);
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    const drawPerforation = (y: number) => {
+      ctx.save();
+      ctx.setLineDash([6, 9]);
+      ctx.strokeStyle = 'rgba(22, 54, 51, 0.52)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(105, y);
+      ctx.lineTo(975, y);
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    const posterHeight = 520;
+    const ticketX = 88;
+    const ticketY = 40;
+    const ticketW = 904;
 
     ctx.fillStyle = '#05070b';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -119,6 +192,7 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
     bg.addColorStop(1, '#111827');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    drawTicketShell();
 
     const poster = ticket.moviePosterUrl
       ? await loadImage(`/api/public/movies/${encodeURIComponent(ticket.movieId)}/poster`)
@@ -126,84 +200,240 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
     if (poster) {
       ctx.save();
       ctx.beginPath();
-      ctx.roundRect(margin, margin, canvas.width - margin * 2, posterHeight, 24);
+      ctx.roundRect(ticketX, ticketY, ticketW, posterHeight, 42);
       ctx.clip();
-      drawCover(ctx, poster, margin, margin, canvas.width - margin * 2, posterHeight);
-      const posterShade = ctx.createLinearGradient(0, 100, 0, 558);
-      posterShade.addColorStop(0, 'rgba(7,9,13,0.06)');
-      posterShade.addColorStop(0.48, 'rgba(7,9,13,0.36)');
-      posterShade.addColorStop(1, 'rgba(7,9,13,0.98)');
+      drawCover(ctx, poster, ticketX, ticketY, ticketW, posterHeight);
+      const posterShade = ctx.createLinearGradient(0, ticketY, 0, ticketY + posterHeight);
+      posterShade.addColorStop(0, 'rgba(3,7,12,0.08)');
+      posterShade.addColorStop(0.48, 'rgba(3,7,12,0.24)');
+      posterShade.addColorStop(1, 'rgba(3,7,12,0.9)');
       ctx.fillStyle = posterShade;
-      ctx.fillRect(margin, margin, canvas.width - margin * 2, posterHeight);
+      ctx.fillRect(ticketX, ticketY, ticketW, posterHeight);
       ctx.restore();
     }
 
-    ctx.fillStyle = 'rgba(5, 9, 14, 0.92)';
-    roundedRect(margin, 328, canvas.width - margin * 2, 724, 24);
-    ctx.strokeStyle = 'rgba(45, 212, 191, 0.5)';
+    ctx.fillStyle = '#52d4c6';
+    ctx.font = '900 34px Arial';
+    ctx.fillText('KSFDC', 220, 124);
+    ctx.fillStyle = '#f7fff8';
+    ctx.font = '800 22px Arial';
+    ctx.fillText('TICKETS', 222, 154);
+    ctx.strokeStyle = '#f7fff8';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(168, 125, 28, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.lineWidth = 2;
-    ctx.strokeRect(margin + 1, 329, canvas.width - margin * 2 - 2, 722);
-
-    ctx.fillStyle = '#2dd4bf';
-    ctx.font = '800 20px Arial';
-    ctx.fillText('KSFDC TICKETS', 54, 382);
+    for (let i = 0; i < 6; i += 1) {
+      const angle = i * Math.PI / 3;
+      ctx.beginPath();
+      ctx.arc(168 + Math.cos(angle) * 13, 125 + Math.sin(angle) * 13, 5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     ctx.fillStyle = '#f8fafc';
-    ctx.font = '800 50px Arial';
-    ctx.fillText(ticket.movieTitle, 54, 438, 430);
-    ctx.font = '700 22px Arial';
-    ctx.fillStyle = '#d8eee8';
-    ctx.fillText(ticket.theatreName, 54, 482, 500);
-    ctx.fillText(`${ticket.screenName} - ${formatShowDateTimeWithDaypart(ticket.showTime)}`, 54, 516, 580);
+    ctx.font = '500 19px Arial';
+    ctx.fillText('Ticket No.', 786, 116);
+    ctx.font = '900 28px Arial';
+    ctx.fillText(ticket.ticketNumber, 700, 154, 238);
 
-    ctx.fillStyle = '#f5b82e';
-    roundedRect(504, 366, 126, 108, 20);
-    ctx.fillStyle = '#111827';
+    ctx.fillStyle = '#f8e8bc';
+    ctx.font = 'italic 700 58px Georgia';
+    ctx.fillText(ticket.movieTitle.split(' ')[0] ?? ticket.movieTitle, 150, 426, 330);
+    ctx.font = '900 74px Georgia';
+    ctx.fillText(ticket.movieTitle.toUpperCase(), 150, 494, 680);
+
+    ctx.fillStyle = '#f6f1e7';
+    ctx.fillRect(ticketX, ticketY + posterHeight, ticketW, 640);
+    ctx.fillStyle = 'rgba(6, 95, 89, 0.96)';
+    ctx.fillRect(808, ticketY + posterHeight, 132, 128);
+
+    ctx.fillStyle = '#075f5b';
     ctx.font = '900 24px Arial';
-    ctx.fillText('ADMIT', 525, 405);
-    ctx.font = '900 48px Arial';
-    ctx.fillText(String(seatCount), 544, 456);
+    ctx.fillText('MOVIE', 150, 612);
+    ctx.fillStyle = '#091b1e';
+    ctx.font = '900 56px Arial';
+    const movieTitleBottom = wrapText(ticket.movieTitle, 150, 664, 620, 58, 2);
 
-    ctx.fillStyle = '#34d399';
-    ctx.font = '800 24px Arial';
-    ctx.fillText(statusLabel(ticket.status), 54, 582);
-    ctx.fillStyle = '#b7c6d7';
-    ctx.font = '700 18px Arial';
-    ctx.fillText(`Ticket ${ticket.ticketNumber}`, 54, 616, 420);
-    ctx.fillText(`Booking ${ticket.bookingId}`, 54, 646, 500);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 28px Arial';
+    ctx.fillText('ADMIT', 832, 610);
+    ctx.font = '900 58px Arial';
+    ctx.fillText(String(seatCount), 846, 680);
+    ctx.font = '900 18px Arial';
+    ctx.fillText(seatCount === 1 ? 'GUEST' : 'GUESTS', 834, 710);
 
-    ctx.fillStyle = 'rgba(255,255,255,0.07)';
-    roundedRect(54, 688, 612, 96, 18);
-    ctx.fillStyle = '#f8fafc';
+    ctx.strokeStyle = 'rgba(9,27,30,0.28)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(150, Math.max(movieTitleBottom + 8, 730));
+    ctx.lineTo(805, Math.max(movieTitleBottom + 8, 730));
+    ctx.stroke();
+
+    const detailY = 792;
+    const detailItems = [
+      ['THEATRE', ticket.theatreName],
+      ['SCREEN', ticket.screenName],
+      ['DATE & TIME', formatShowDateTimeWithDaypart(ticket.showTime)]
+    ];
+    detailItems.forEach(([label, value], index) => {
+      const x = 150 + index * 246;
+      if (index > 0) {
+        ctx.save();
+        ctx.setLineDash([5, 7]);
+        ctx.strokeStyle = 'rgba(9,27,30,0.28)';
+        ctx.beginPath();
+        ctx.moveTo(x - 28, detailY - 22);
+        ctx.lineTo(x - 28, detailY + 66);
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.fillStyle = '#075f5b';
+      ctx.font = '900 17px Arial';
+      ctx.fillText(label, x, detailY);
+      ctx.fillStyle = '#101820';
+      ctx.font = '700 24px Arial';
+      wrapText(value, x, detailY + 32, 210, 27, 2);
+    });
+
+    ctx.fillStyle = '#075f5b';
+    ctx.font = '900 28px Arial';
+    ctx.fillText('SEATS', 150, 930);
+
+    const tableX = 146;
+    const tableY = 950;
+    const tableW = 788;
+    const rowH = 64;
+    ctx.fillStyle = '#24211e';
+    roundedRect(tableX, tableY, tableW, 56 + ticket.groups.length * rowH, 12);
+    ctx.fillStyle = '#f8f4e9';
+    ctx.fillRect(tableX + 1, tableY + 56, tableW - 2, ticket.groups.length * rowH - 1);
+    ctx.strokeStyle = 'rgba(9,27,30,0.48)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(tableX, tableY, tableW, 56 + ticket.groups.length * rowH);
+    ctx.fillStyle = '#fff';
     ctx.font = '900 20px Arial';
-    ctx.fillText('SEATS', 78, 725);
-    ctx.font = '800 24px Arial';
-    ctx.fillText(seatsLine, 78, 760, 560);
+    ctx.fillText('CATEGORY', tableX + 32, tableY + 36);
+    ctx.fillText('SEAT NOS.', tableX + 352, tableY + 36);
+    ctx.strokeStyle = 'rgba(9,27,30,0.42)';
+    ctx.beginPath();
+    ctx.moveTo(tableX + 320, tableY);
+    ctx.lineTo(tableX + 320, tableY + 56 + ticket.groups.length * rowH);
+    ctx.stroke();
+    ticket.groups.forEach((group, index) => {
+      const y = tableY + 56 + index * rowH;
+      if (index > 0) {
+        ctx.save();
+        ctx.setLineDash([4, 6]);
+        ctx.strokeStyle = 'rgba(9,27,30,0.32)';
+        ctx.beginPath();
+        ctx.moveTo(tableX, y);
+        ctx.lineTo(tableX + tableW, y);
+        ctx.stroke();
+        ctx.restore();
+      }
+      const colors = ['#0f766e', '#eab308', '#e11d48', '#2563eb'];
+      ctx.fillStyle = colors[index % colors.length];
+      ctx.beginPath();
+      ctx.arc(tableX + 46, y + 34, 13, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#111827';
+      ctx.font = '800 24px Arial';
+      ctx.fillText(group.zone, tableX + 76, y + 42, 225);
+      ctx.font = '900 26px Arial';
+      ctx.fillText(group.seats.join(', '), tableX + 352, y + 42, 395);
+    });
 
-    ctx.fillStyle = '#f5b82e';
-    ctx.font = '900 30px Arial';
-    ctx.fillText(money(ticket.totalAmount), 54, 1010);
-    ctx.fillStyle = '#d8eee8';
+    ctx.fillStyle = '#075f5b';
+    ctx.font = '900 24px Arial';
+    ctx.fillText('TOTAL AMOUNT', 150, 1294);
+    ctx.fillStyle = '#121212';
+    ctx.font = '900 64px Arial';
+    ctx.fillText(money(ticket.totalAmount), 150, 1362);
+    ctx.font = '800 24px Arial';
+    ctx.fillText(`PAID VIA ${ticket.paymentMode?.replaceAll('_', ' ') ?? 'RECORDED'}`, 150, 1404, 420);
+
+    ctx.save();
+    ctx.globalAlpha = 0.16;
+    ctx.strokeStyle = '#075f5b';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(795, 1326, 78, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.font = '900 34px Arial';
+    ctx.fillStyle = '#075f5b';
+    ctx.fillText('KSFDC', 744, 1340);
+    ctx.restore();
+
+    drawPerforation(1218);
+    ctx.fillStyle = '#053a3b';
+    ctx.fillRect(ticketX, 1218, ticketW, 362);
+    const footerGradient = ctx.createLinearGradient(0, 1218, 0, 1580);
+    footerGradient.addColorStop(0, 'rgba(20, 184, 166, 0.18)');
+    footerGradient.addColorStop(1, 'rgba(0, 0, 0, 0.1)');
+    ctx.fillStyle = footerGradient;
+    ctx.fillRect(ticketX, 1218, ticketW, 362);
+
+    ctx.strokeStyle = '#2dd4bf';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(150, 1288, 70, 88, 12);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(170, 1332);
+    ctx.lineTo(188, 1350);
+    ctx.lineTo(206, 1318);
+    ctx.stroke();
+    ctx.fillStyle = '#40e0d0';
+    ctx.font = '900 24px Arial';
+    ctx.fillText('SCAN TO VERIFY', 246, 1314);
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = '500 20px Arial';
+    ctx.fillText('Show this QR code at', 246, 1350);
+    ctx.fillText('the theatre entrance', 246, 1378);
+    ctx.fillStyle = '#40e0d0';
+    ctx.font = '900 18px Arial';
+    ctx.fillText('BOOKING ID', 150, 1454);
+    ctx.fillStyle = '#ffffff';
     ctx.font = '700 18px Arial';
-    ctx.fillText(ticket.paymentMode?.replaceAll('_', ' ') ?? 'RECORDED', 54, 1038, 300);
+    wrapText(ticket.bookingId, 150, 1488, 430, 24, 2);
 
     if (qrDataUrl) {
       const qrImage = new Image();
       qrImage.src = qrDataUrl;
       await new Promise((resolve) => { qrImage.onload = resolve; qrImage.onerror = resolve; });
       ctx.fillStyle = '#ffffff';
-      roundedRect(494, 830, 150, 150, 18);
-      ctx.drawImage(qrImage, 506, 842, 126, 126);
-      ctx.fillStyle = '#d8eee8';
-      ctx.font = '800 14px Arial';
-      ctx.fillText('SCAN TO VERIFY', 504, 1010);
+      roundedRect(624, 1238, 326, 326, 20);
+      ctx.drawImage(qrImage, 644, 1258, 286, 286);
     }
 
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.86));
+    ctx.fillStyle = 'rgba(198, 162, 92, 0.85)';
+    ctx.font = '700 18px Arial';
+    ctx.fillText('www.ksfdc.in', 160, 1560);
+    ctx.fillText('1800 309 3333', 416, 1560);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    const punch = (cx: number, cy: number, r: number) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+    };
+    for (let cx = ticketX + 74; cx < ticketX + ticketW - 64; cx += 31) {
+      punch(cx, ticketY, 8);
+      punch(cx, ticketY + 1540, 8);
+    }
+    punch(ticketX, 412, 30);
+    punch(ticketX + ticketW, 412, 30);
+    punch(ticketX, 1206, 30);
+    punch(ticketX + ticketW, 1206, 30);
+    ctx.restore();
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
     if (!blob) return;
     const link = document.createElement('a');
     const objectUrl = URL.createObjectURL(blob);
-    link.download = `${ticket.ticketNumber}.jpg`;
+    link.download = `${ticket.ticketNumber}.png`;
     link.href = objectUrl;
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
