@@ -142,28 +142,30 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
       ctx.restore();
 
       ctx.save();
-      ctx.globalCompositeOperation = 'destination-out';
-      const punch = (cx: number, cy: number, r: number) => {
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.fill();
-      };
-      for (let cx = x + 74; cx < x + width - 64; cx += 31) {
-        punch(cx, y, 8);
-        punch(cx, y + height, 8);
-      }
-      punch(x, 412, 30);
-      punch(x + width, 412, 30);
-      punch(x, 1206, 30);
-      punch(x + width, 1206, 30);
-      ctx.restore();
-
-      ctx.save();
       ctx.strokeStyle = '#c6a25c';
       ctx.lineWidth = 2.4;
       ctx.beginPath();
       ctx.roundRect(x + 1.5, y + 1.5, width - 3, height - 3, radius);
       ctx.stroke();
+      ctx.restore();
+    };
+
+    const drawPunchHoles = () => {
+      const punch = (cx: number, cy: number, r: number) => {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+      };
+      ctx.save();
+      ctx.fillStyle = '#000000';
+      for (let cx = ticketX + 74; cx <= ticketX + ticketW - 74; cx += 32) {
+        punch(cx, ticketY, 9);
+        punch(cx, ticketY + 1540, 9);
+      }
+      punch(ticketX, 412, 31);
+      punch(ticketX + ticketW, 412, 31);
+      punch(ticketX, 1206, 31);
+      punch(ticketX + ticketW, 1206, 31);
       ctx.restore();
     };
 
@@ -184,13 +186,7 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
     const ticketY = 40;
     const ticketW = 904;
 
-    ctx.fillStyle = '#05070b';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    bg.addColorStop(0, '#071d1a');
-    bg.addColorStop(0.48, '#0a101a');
-    bg.addColorStop(1, '#111827');
-    ctx.fillStyle = bg;
+    ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     drawTicketShell();
 
@@ -236,12 +232,6 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
     ctx.fillText('Ticket No.', 786, 116);
     ctx.font = '900 28px Arial';
     ctx.fillText(ticket.ticketNumber, 700, 154, 238);
-
-    ctx.fillStyle = '#f8e8bc';
-    ctx.font = 'italic 700 58px Georgia';
-    ctx.fillText(ticket.movieTitle.split(' ')[0] ?? ticket.movieTitle, 150, 426, 330);
-    ctx.font = '900 74px Georgia';
-    ctx.fillText(ticket.movieTitle.toUpperCase(), 150, 494, 680);
 
     ctx.fillStyle = '#f6f1e7';
     ctx.fillRect(ticketX, ticketY + posterHeight, ticketW, 640);
@@ -412,22 +402,7 @@ export default function ShareableTicketCard({ ticket, seatLayout }: { ticket: Sh
     ctx.fillText('www.ksfdc.in', 160, 1560);
     ctx.fillText('1800 309 3333', 416, 1560);
 
-    ctx.save();
-    ctx.globalCompositeOperation = 'destination-out';
-    const punch = (cx: number, cy: number, r: number) => {
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-    };
-    for (let cx = ticketX + 74; cx < ticketX + ticketW - 64; cx += 31) {
-      punch(cx, ticketY, 8);
-      punch(cx, ticketY + 1540, 8);
-    }
-    punch(ticketX, 412, 30);
-    punch(ticketX + ticketW, 412, 30);
-    punch(ticketX, 1206, 30);
-    punch(ticketX + ticketW, 1206, 30);
-    ctx.restore();
+    drawPunchHoles();
 
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
     if (!blob) return;
