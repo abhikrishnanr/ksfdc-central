@@ -39,6 +39,8 @@ export default function BookMyShowStyleSeatMap({
   show,
   selected,
   selectedSeatKeys,
+  dedupeSeatLabels = false,
+  animateSelectedSeats = false,
   disabled,
   holdActive,
   onToggle
@@ -46,6 +48,8 @@ export default function BookMyShowStyleSeatMap({
   show: BookingShowDetail;
   selected: string[];
   selectedSeatKeys?: string[];
+  dedupeSeatLabels?: boolean;
+  animateSelectedSeats?: boolean;
   disabled: boolean;
   holdActive: boolean;
   onToggle: (cell: SeatCell) => void;
@@ -114,11 +118,16 @@ export default function BookMyShowStyleSeatMap({
               ) : (
                 <div className="seat-row public">
                   {row.rowLabel ? <strong className="row-label public">{row.rowLabel}</strong> : <span className="row-label public empty" aria-hidden="true" />}
-                  {row.cells.map((cell) => {
+                  {(() => {
+                    const renderedSeatLabels = new Set<string>();
+                    return row.cells.map((cell) => {
                     if (cell.kind !== 'SEAT') {
                       return <span className="aisle-gap public" key={cell.cellId} aria-hidden="true" />;
                     }
                     const rowSeatId = row.rowLabel && cell.seatNumber ? `${row.rowLabel}${cell.seatNumber}` : null;
+                    const displaySeatKey = normalizedSeatKeyPart(rowSeatId ?? cell.seatId);
+                    if (dedupeSeatLabels && renderedSeatLabels.has(displaySeatKey)) return null;
+                    renderedSeatLabels.add(displaySeatKey);
                     const candidateKeys = Array.from(new Set([
                       ticketSeatKey(cell.zone, cell.seatId),
                       rowSeatId ? ticketSeatKey(cell.zone, rowSeatId) : null
@@ -132,7 +141,7 @@ export default function BookMyShowStyleSeatMap({
                     if (miniature) return <span className={`minimap-seat ${STATUS_STYLES[status].className}`} key={cell.cellId} />;
                     return (
                       <button
-                        className={`seat-button public ${STATUS_STYLES[status].className}`}
+                        className={`seat-button public ${STATUS_STYLES[status].className}${animateSelectedSeats && isSelected ? ' is-ticket-highlight' : ''}`}
                         key={cell.cellId}
                         type="button"
                         disabled={disabled || show.bookingEnabled === false}
@@ -145,7 +154,8 @@ export default function BookMyShowStyleSeatMap({
                         {cell.accessibility ? <small>WC</small> : null}
                       </button>
                     );
-                  })}
+                  });
+                  })()}
                 </div>
               )}
             </section>
@@ -159,7 +169,7 @@ export default function BookMyShowStyleSeatMap({
   }
 
   return (
-    <section className={`bms-seat-map-shell unified-seat-shell${fullscreen ? ' is-fullscreen' : ''}`} ref={shellRef}>
+    <section className={`bms-seat-map-shell unified-seat-shell${fullscreen ? ' is-fullscreen' : ''}${animateSelectedSeats ? ' has-animated-selection' : ''}`} ref={shellRef}>
       <div className="seat-legend public-dark unified-seat-legend" aria-label="Seat status legend">
         {Object.entries(STATUS_STYLES).map(([status, config]) => <span className={`seat-legend-item ${config.className}`} key={status}>{config.label}</span>)}
       </div>

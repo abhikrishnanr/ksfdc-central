@@ -37,6 +37,8 @@ export default function TicketSeatLayoutModal({
           show={show}
           selected={ticketSeats}
           selectedSeatKeys={selectedSeatKeys}
+          dedupeSeatLabels
+          animateSelectedSeats
           disabled
           holdActive={false}
           onToggle={() => undefined}
