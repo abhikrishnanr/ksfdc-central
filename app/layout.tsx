@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 var stored = localStorage.getItem('ksfdc-theme');
                 var theme = stored === 'light' || stored === 'dark'
                   ? stored
-                  : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+                  : 'dark';
                 document.documentElement.dataset.theme = theme;
                 document.documentElement.style.colorScheme = theme;
               } catch (_) {}

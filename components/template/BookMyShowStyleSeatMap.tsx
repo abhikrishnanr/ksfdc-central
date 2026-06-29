@@ -17,6 +17,10 @@ function rowZone(row: { cells: SeatCell[] }) {
   return row.cells.find((cell) => cell.kind === 'SEAT' && cell.zone)?.zone ?? 'STANDARD';
 }
 
+function rowHasSeats(row: { cells: SeatCell[] }) {
+  return row.cells.some((cell) => cell.kind === 'SEAT');
+}
+
 function amountForZone(show: BookingShowDetail, zone: string) {
   return show.zoneRates.find((rate) => rate.zone === zone)?.amount ?? null;
 }
@@ -80,19 +84,20 @@ export default function BookMyShowStyleSeatMap({
     return (
       <div className={`unified-seat-hall${miniature ? ' is-minimap' : ''}`}>
         {show.rows.map((row, rowIndex) => {
-          const zone = row.cells.length ? rowZone(row) : activeZone;
-          const zoneChanged = Boolean(row.cells.length && zone !== activeZone);
-          if (row.cells.length) activeZone = zone;
+          const hasSeats = rowHasSeats(row);
+          const zone = hasSeats ? rowZone(row) : activeZone;
+          const zoneChanged = Boolean(hasSeats && zone !== activeZone);
+          if (hasSeats) activeZone = zone;
           const amount = amountForZone(show, zone);
           return (
-            <section className={`unified-seat-zone${row.isPathway || row.cells.length === 0 ? ' is-pathway-zone' : ''}`} key={row.rowKey ?? row.rowLabel ?? `row-${rowIndex}`}>
+            <section className={`unified-seat-zone${row.isPathway || !hasSeats ? ' is-pathway-zone' : ''}`} key={row.rowKey ?? row.rowLabel ?? `row-${rowIndex}`}>
               {zoneChanged ? (
                 <div className="unified-zone-heading">
                   <strong>{zone}</strong>
                   {amount == null ? null : <span>INR {amount}</span>}
                 </div>
               ) : null}
-              {row.cells.length === 0 || row.isPathway ? (
+              {!hasSeats || row.isPathway ? (
                 <div className="seat-row public pathway-row" aria-label="Aisle pathway" />
               ) : (
                 <div className="seat-row public">
@@ -143,7 +148,7 @@ export default function BookMyShowStyleSeatMap({
         centerOnInit
         centerZoomedOut
         limitToBounds={false}
-        wheel={{ step: 0.018 }}
+        wheel={{ step: 0.006 }}
         panning={{ velocityDisabled: true, excluded: scale > 1 ? [] : ['button'] }}
         pinch={{ step: 3 }}
         doubleClick={{ mode: 'toggle', step: 0.35, excluded: ['button'] }}
