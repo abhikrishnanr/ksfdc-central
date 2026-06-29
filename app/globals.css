@@ -684,6 +684,8 @@ p { color: var(--muted); line-height: 1.6; }
 }
 
 .movie-detail-poster {
+  position: relative;
+  overflow: hidden;
   aspect-ratio: 2 / 3;
   width: 100%;
   border-radius: 8px;
@@ -4956,6 +4958,8 @@ html[data-theme="light"],
 }
 
 .movie-detail-backdrop.redesigned .movie-detail-poster {
+  position: relative;
+  overflow: hidden;
   min-height: 330px;
 }
 

@@ -40,7 +40,16 @@ export default function MovieHero({ movie }: { movie: CentralMovieDetail }) {
       <div className="movie-detail-backdrop redesigned" style={backdropStyle}>
         <div className="movie-detail-poster-wrap">
           <div className="movie-detail-poster" aria-label={`${movie.title} poster`}>
-            {movie.posterUrl ? <Image src={movie.posterUrl} alt={`${movie.title} poster`} fill sizes="(max-width: 760px) 46vw, 240px" priority /> : null}
+            {movie.posterUrl ? (
+              <Image
+                src={movie.posterUrl}
+                alt={`${movie.title} poster`}
+                width={480}
+                height={720}
+                sizes="(max-width: 760px) 46vw, 240px"
+                priority
+              />
+            ) : null}
           </div>
         </div>
 
