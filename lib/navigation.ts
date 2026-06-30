@@ -32,7 +32,8 @@ export const officialNavigation: NavigationItem[] = [
   { label: 'Shows', href: '/admin/shows' },
   { label: 'Bookings', href: '/admin/reports' },
   { label: 'Reports', href: '/admin/reports' },
-  { label: 'Reconciliation', href: '/admin/reconciliation' }
+  { label: 'Reconciliation', href: '/admin/reconciliation' },
+  { label: 'Technical Manual', href: '/admin/documentation' }
 ];
 
 export function getPublicNavigation(authenticated: boolean): NavigationItem[] {
