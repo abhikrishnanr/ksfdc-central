@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, ChevronLeft, ChevronRight, Ticket } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -27,12 +28,22 @@ export default function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   return (
     <section
       className="ksfdc-hero-carousel"
-      style={movie.posterUrl ? { backgroundImage: `linear-gradient(90deg, rgba(4,8,14,0.98), rgba(4,8,14,0.42), rgba(4,8,14,0.9)), url("${movie.posterUrl}")` } : undefined}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       aria-roledescription="carousel"
       aria-label="Featured movies"
     >
+      {movie.posterUrl ? (
+        <Image
+          className="hero-background-image"
+          src={movie.posterUrl}
+          alt=""
+          fill
+          priority
+          sizes="(max-width: 820px) 100vw, calc(100vw - 420px)"
+        />
+      ) : null}
+      <div className="hero-background-overlay" aria-hidden="true" />
       <Link className="hero-poster-link" href={`/movies/${movie.id}`} aria-label={`View ${movie.title} details`} />
       {count > 1 ? <button className="hero-arrow left" type="button" aria-label="Previous featured movie" onClick={previous}><ChevronLeft /></button> : null}
       <div className="hero-movie-copy">

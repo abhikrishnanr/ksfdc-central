@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { KeyboardEvent } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bell,
   Building2,
@@ -58,6 +58,7 @@ export default function PublicHeader() {
   const [accountOpen, setAccountOpen] = useState(false);
   const city = searchParams.get('city') || 'Kerala';
   const searchRef = useRef<HTMLDivElement>(null);
+  const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
     if (official) return;
@@ -65,24 +66,22 @@ export default function PublicHeader() {
   }, [official]);
 
   useEffect(() => {
-    if (official || query.trim().length < 2) {
+    const term = deferredQuery.trim();
+    if (official || term.length < 2) {
       return;
     }
     const controller = new AbortController();
-    const timer = window.setTimeout(() => {
-      fetch(`/api/public/search?q=${encodeURIComponent(query.trim())}`, { signal: controller.signal })
-        .then((response) => response.json())
-        .then((payload) => {
-          setSuggestions(Array.isArray(payload.suggestions) ? payload.suggestions : []);
-          setActiveIndex(0);
-        })
-        .catch(() => setSuggestions([]));
-    }, 180);
+    fetch(`/api/public/search?q=${encodeURIComponent(term)}`, { signal: controller.signal })
+      .then((response) => response.json())
+      .then((payload) => {
+        setSuggestions(Array.isArray(payload.suggestions) ? payload.suggestions : []);
+        setActiveIndex(0);
+      })
+      .catch(() => setSuggestions([]));
     return () => {
-      window.clearTimeout(timer);
       controller.abort();
     };
-  }, [official, query]);
+  }, [deferredQuery, official]);
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
@@ -141,9 +140,19 @@ export default function PublicHeader() {
   function chooseSuggestion(suggestion: Suggestion) {
     setQuery('');
     setSuggestions([]);
+    setActiveIndex(0);
     setSearchOpen(false);
     setMobileOpen(false);
     router.push(suggestion.href);
+  }
+
+  function updateSearchQuery(value: string) {
+    setQuery(value);
+    if (value.trim().length < 2) {
+      setSuggestions([]);
+      setActiveIndex(0);
+    }
+    setSearchOpen(true);
   }
 
   function handleSearchKey(event: KeyboardEvent<HTMLInputElement>) {
@@ -204,7 +213,7 @@ export default function PublicHeader() {
             <Search size={18} aria-hidden="true" />
             <input
               value={query}
-              onChange={(event) => { const value = event.target.value; setQuery(value); if (value.trim().length < 2) setSuggestions([]); setSearchOpen(true); }}
+              onChange={(event) => updateSearchQuery(event.target.value)}
               onFocus={() => setSearchOpen(true)}
               onKeyDown={handleSearchKey}
               placeholder="Search movies or theatres"
@@ -258,7 +267,7 @@ export default function PublicHeader() {
           <div className="mobile-drawer-tools">
             <label className="drawer-search">
               <Search size={19} />
-              <input value={query} onChange={(event) => { const value = event.target.value; setQuery(value); if (value.trim().length < 2) setSuggestions([]); setSearchOpen(true); }} onKeyDown={handleSearchKey} placeholder="Search movies or theatres" />
+              <input value={query} onChange={(event) => updateSearchQuery(event.target.value)} onKeyDown={handleSearchKey} placeholder="Search movies or theatres" />
             </label>
             {searchOpen ? suggestionList : null}
             <label className="drawer-select"><MapPin size={19} /><select value={city} onChange={(event) => updateCity(event.target.value)}>{cityOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>

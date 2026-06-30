@@ -612,20 +612,23 @@ export const getMovieIdsWithUpcomingShows = reactCache(async (city?: string | nu
 
 export async function getTheatreDetail(theatreId: string) {
   return safe<(CentralTheatreSummary & { showtimes: PublicShowtimeSummary[] }) | null>(null, async () => {
-    const [[theatre]] = await getCentralDbPool().query<RowDataPacket[]>(`
-      SELECT t.id, t.code, t.name, t.city, COUNT(DISTINCT sc.id) AS screenCount,
-             COUNT(DISTINCT CASE WHEN s.status IN ('SCHEDULED','OPEN') AND DATE(s.show_time) >= CURRENT_DATE() THEN s.id END) AS activeShowCount,
-             MIN(CASE WHEN s.status IN ('SCHEDULED','OPEN') AND DATE(s.show_time) >= CURRENT_DATE() THEN sp.amount END) AS priceStartsAt
-      FROM theatres t
-      LEFT JOIN screens sc ON sc.theatre_id = t.id
-      LEFT JOIN shows s ON s.theatre_id = t.id
-      LEFT JOIN show_pricing sp ON sp.show_id = s.id
-      WHERE t.id = ? AND t.status = 'ACTIVE'
-      GROUP BY t.id, t.code, t.name, t.city
-      LIMIT 1
-    `, [theatreId]);
+    const [theatreResult, showtimes] = await Promise.all([
+      getCentralDbPool().query<RowDataPacket[]>(`
+        SELECT t.id, t.code, t.name, t.city, COUNT(DISTINCT sc.id) AS screenCount,
+               COUNT(DISTINCT CASE WHEN s.status IN ('SCHEDULED','OPEN') AND DATE(s.show_time) >= CURRENT_DATE() THEN s.id END) AS activeShowCount,
+               MIN(CASE WHEN s.status IN ('SCHEDULED','OPEN') AND DATE(s.show_time) >= CURRENT_DATE() THEN sp.amount END) AS priceStartsAt
+        FROM theatres t
+        LEFT JOIN screens sc ON sc.theatre_id = t.id
+        LEFT JOIN shows s ON s.theatre_id = t.id
+        LEFT JOIN show_pricing sp ON sp.show_id = s.id
+        WHERE t.id = ? AND t.status = 'ACTIVE'
+        GROUP BY t.id, t.code, t.name, t.city
+        LIMIT 1
+      `, [theatreId]),
+      getPublicShowtimes({ theatreId })
+    ]);
+    const [[theatre]] = theatreResult;
     if (!theatre) return null;
-    const showtimes = await getPublicShowtimes({ theatreId });
     return {
       id: String(theatre.id),
       code: String(theatre.code),
@@ -644,20 +647,24 @@ export async function getPublicSearchSuggestions(query: string) {
     const term = query.trim();
     if (term.length < 2) return [];
     const like = `%${term}%`;
-    const [movieRows] = await getCentralDbPool().query<RowDataPacket[]>(`
-      SELECT id, title, language
-      FROM movies
-      WHERE status = 'ACTIVE' AND title LIKE ?
-      ORDER BY title
-      LIMIT 5
-    `, [like]);
-    const [theatreRows] = await getCentralDbPool().query<RowDataPacket[]>(`
-      SELECT id, name, city
-      FROM theatres
-      WHERE status = 'ACTIVE' AND (name LIKE ? OR city LIKE ?)
-      ORDER BY city, name
-      LIMIT 5
-    `, [like, like]);
+    const [movieResult, theatreResult] = await Promise.all([
+      getCentralDbPool().query<RowDataPacket[]>(`
+        SELECT id, title, language
+        FROM movies
+        WHERE status = 'ACTIVE' AND title LIKE ?
+        ORDER BY title
+        LIMIT 5
+      `, [like]),
+      getCentralDbPool().query<RowDataPacket[]>(`
+        SELECT id, name, city
+        FROM theatres
+        WHERE status = 'ACTIVE' AND (name LIKE ? OR city LIKE ?)
+        ORDER BY city, name
+        LIMIT 5
+      `, [like, like])
+    ]);
+    const [movieRows] = movieResult;
+    const [theatreRows] = theatreResult;
     return [
       ...movieRows.map((row) => ({
         id: String(row.id),
@@ -741,30 +748,34 @@ export async function getBookingShow(showId: string) {
     `, [showId]);
     if (!show) return null;
 
-    const [prices] = await getCentralDbPool().query<RowDataPacket[]>("SELECT zone_code AS zone, amount FROM show_pricing WHERE show_id = ? ORDER BY amount DESC, zone_code ASC", [showId]);
-    const [cells] = await getCentralDbPool().query<RowDataPacket[]>(`
-      SELECT sls.seat_id AS cellId, CASE WHEN sls.item_type = 'BLOCKED' THEN 'SEAT' ELSE sls.item_type END AS kind, sls.row_label AS rowLabel, sls.display_order AS displayOrder,
-             sls.seat_id AS seatId, sls.seat_number AS seatNumber, sls.zone_code AS zone, sls.accessibility, sp.amount,
-             CASE
-               WHEN sls.item_type IN ('GAP','AISLE') THEN 'AVAILABLE'
-               WHEN sls.is_blocked = TRUE OR sls.item_type = 'BLOCKED' THEN 'BLOCKED'
-               WHEN c.seat_id IS NOT NULL THEN 'SOLD'
-               WHEN h.seat_id IS NOT NULL THEN 'HELD'
-               ELSE 'AVAILABLE'
-             END AS seatStatus
-      FROM shows s
-      JOIN seat_layout_seats sls ON sls.layout_id = s.layout_id
-      LEFT JOIN show_pricing sp ON sp.show_id = s.id AND sp.zone_code = sls.zone_code
-      LEFT JOIN central_confirmed_seats c ON c.show_id = s.id AND c.seat_id = sls.seat_id
-      LEFT JOIN (
-        SELECT hi.show_id, hi.seat_id
-        FROM central_seat_hold_items hi
-        JOIN central_seat_holds hh ON hh.id = hi.hold_id
-        WHERE hh.status = 'ACTIVE' AND hh.expires_at > NOW()
-      ) h ON h.show_id = s.id AND h.seat_id = sls.seat_id
-      WHERE s.id = ?
-      ORDER BY sls.row_sort, sls.row_label, sls.display_order
-    `, [showId]);
+    const [pricesResult, cellsResult] = await Promise.all([
+      getCentralDbPool().query<RowDataPacket[]>("SELECT zone_code AS zone, amount FROM show_pricing WHERE show_id = ? ORDER BY amount DESC, zone_code ASC", [showId]),
+      getCentralDbPool().query<RowDataPacket[]>(`
+        SELECT sls.seat_id AS cellId, CASE WHEN sls.item_type = 'BLOCKED' THEN 'SEAT' ELSE sls.item_type END AS kind, sls.row_label AS rowLabel, sls.display_order AS displayOrder,
+               sls.seat_id AS seatId, sls.seat_number AS seatNumber, sls.zone_code AS zone, sls.accessibility, sp.amount,
+               CASE
+                 WHEN sls.item_type IN ('GAP','AISLE') THEN 'AVAILABLE'
+                 WHEN sls.is_blocked = TRUE OR sls.item_type = 'BLOCKED' THEN 'BLOCKED'
+                 WHEN c.seat_id IS NOT NULL THEN 'SOLD'
+                 WHEN h.seat_id IS NOT NULL THEN 'HELD'
+                 ELSE 'AVAILABLE'
+               END AS seatStatus
+        FROM shows s
+        JOIN seat_layout_seats sls ON sls.layout_id = s.layout_id
+        LEFT JOIN show_pricing sp ON sp.show_id = s.id AND sp.zone_code = sls.zone_code
+        LEFT JOIN central_confirmed_seats c ON c.show_id = s.id AND c.seat_id = sls.seat_id
+        LEFT JOIN (
+          SELECT hi.show_id, hi.seat_id
+          FROM central_seat_hold_items hi
+          JOIN central_seat_holds hh ON hh.id = hi.hold_id
+          WHERE hh.status = 'ACTIVE' AND hh.expires_at > NOW()
+        ) h ON h.show_id = s.id AND h.seat_id = sls.seat_id
+        WHERE s.id = ?
+        ORDER BY sls.row_sort, sls.row_label, sls.display_order
+      `, [showId])
+    ]);
+    const [prices] = pricesResult;
+    const [cells] = cellsResult;
 
     const rowMap = new Map<string, SeatCell[]>();
     const cellMap = new Map<string, SeatCell>();
@@ -857,47 +868,52 @@ export async function getAdminDashboard(theatreId?: string | null) {
     const inboxScope = theatreId ? ' WHERE theatre_id = ?' : '';
     const mirrorScope = theatreId ? ' WHERE theatre_id = ?' : '';
     const summaryParams = theatreId ? Array(12).fill(theatreId) : [];
-    const [[summary]] = await getCentralDbPool().query<RowDataPacket[]>(`
-      SELECT
-        (SELECT COUNT(*) FROM shows WHERE DATE(show_time) = CURRENT_DATE()${showScope}) AS totalShowsToday,
-        (SELECT COUNT(*) FROM central_bookings cb WHERE DATE(cb.created_at) = CURRENT_DATE() AND cb.status = 'CONFIRMED'${bookingScope}) AS totalBookingsToday,
-        (SELECT COUNT(*) FROM central_bookings cb WHERE DATE(cb.created_at) = CURRENT_DATE() AND cb.status = 'CONFIRMED' AND cb.channel = 'PUBLIC'${bookingScope}) AS centralBookingsToday,
-        (SELECT COUNT(*) FROM central_bookings cb WHERE DATE(cb.created_at) = CURRENT_DATE() AND cb.status = 'CONFIRMED' AND cb.channel = 'COUNTER'${bookingScope}) AS localSyncedBookingsToday,
-        (SELECT COUNT(*) FROM central_bookings cb WHERE DATE(cb.created_at) = CURRENT_DATE() AND cb.status = 'CONFIRMED' AND cb.channel = 'AGENT'${bookingScope}) AS agentBookingsToday,
-        (SELECT COALESCE(SUM(cb.total_amount), 0) FROM central_bookings cb WHERE DATE(cb.created_at) = CURRENT_DATE() AND cb.status = 'CONFIRMED'${bookingScope}) AS totalCollection,
-        (SELECT COUNT(*) FROM shows WHERE DATE(show_time) = CURRENT_DATE() AND authority_mode = 'RETURNING_TO_CENTRAL'${showScope}) AS returningToCentralCount,
-        (SELECT COUNT(*) FROM shows WHERE DATE(show_time) = CURRENT_DATE() AND authority_mode = 'LOCAL_AUTHORITY_OFFLINE'${showScope}) AS localAuthorityOfflineCount,
-        (SELECT COALESCE(SUM(pending_local_events), 0) FROM theatre_heartbeats WHERE trusted_for_admin_sync = 1${heartbeatScope}) AS pendingSyncEvents,
-        (SELECT COALESCE(SUM(failed_local_events), 0) FROM theatre_heartbeats WHERE trusted_for_admin_sync = 1${heartbeatScope}) AS failedSyncEvents,
-        (SELECT COUNT(*) FROM agent_clients WHERE status = 'ACTIVE') AS activeAgents,
-        (SELECT MAX(source_sequence_no) FROM central_sync_inbox${inboxScope}) AS latestReceivedLocalSequenceNo,
-        (SELECT MAX(sequence_no) FROM central_mirror_events${mirrorScope}) AS latestCentralMirrorSequenceNo
-    `, summaryParams);
     const authorityParams = theatreId ? [theatreId] : [];
-    const [authorityRows] = await getCentralDbPool().query<RowDataPacket[]>(`
-      SELECT s.id AS showId, m.title AS movieTitle, COALESCE(st.authority_mode, s.authority_mode) AS authorityMode,
-             st.local_heartbeat_at AS localHeartbeatAt, COALESCE(st.pending_sync_events, 0) AS pendingSyncEvents,
-             COALESCE(st.failed_sync_events, 0) AS failedSyncEvents
-      FROM shows s
-      JOIN movies m ON m.id = s.movie_id
-      LEFT JOIN show_authority_state st ON st.show_id = s.id
-      WHERE DATE(s.show_time) = CURRENT_DATE()${theatreId ? ' AND s.theatre_id = ?' : ''}
-      ORDER BY s.show_time
-    `, authorityParams);
     const heartbeatParams = theatreId ? [theatreId] : [];
-    const [heartbeatRows] = await getCentralDbPool().query<RowDataPacket[]>(`
-      SELECT theatre_id AS theatreId, local_app_url AS localAppUrl, authority_mode AS authorityMode,
-             last_local_sequence AS lastLocalSequence, last_central_mirror_sequence AS lastCentralMirrorSequence,
-             pending_local_events AS pendingLocalEvents, failed_local_events AS failedLocalEvents, status, last_seen_at AS lastSeenAt,
-             CASE
-               WHEN status = 'OFFLINE' OR last_seen_at < DATE_SUB(NOW(), INTERVAL 60 SECOND) THEN 'OFFLINE'
-               WHEN last_seen_at < DATE_SUB(NOW(), INTERVAL 30 SECOND) THEN 'STALE'
-               ELSE 'ONLINE'
-             END AS localHeartbeatStatus
-      FROM theatre_heartbeats
-      ${theatreId ? 'WHERE theatre_id = ?' : ''}
-      ORDER BY last_seen_at DESC
-    `, heartbeatParams);
+    const [summaryResult, authorityResult, heartbeatResult] = await Promise.all([
+      getCentralDbPool().query<RowDataPacket[]>(`
+        SELECT
+          (SELECT COUNT(*) FROM shows WHERE DATE(show_time) = CURRENT_DATE()${showScope}) AS totalShowsToday,
+          (SELECT COUNT(*) FROM central_bookings cb WHERE DATE(cb.created_at) = CURRENT_DATE() AND cb.status = 'CONFIRMED'${bookingScope}) AS totalBookingsToday,
+          (SELECT COUNT(*) FROM central_bookings cb WHERE DATE(cb.created_at) = CURRENT_DATE() AND cb.status = 'CONFIRMED' AND cb.channel = 'PUBLIC'${bookingScope}) AS centralBookingsToday,
+          (SELECT COUNT(*) FROM central_bookings cb WHERE DATE(cb.created_at) = CURRENT_DATE() AND cb.status = 'CONFIRMED' AND cb.channel = 'COUNTER'${bookingScope}) AS localSyncedBookingsToday,
+          (SELECT COUNT(*) FROM central_bookings cb WHERE DATE(cb.created_at) = CURRENT_DATE() AND cb.status = 'CONFIRMED' AND cb.channel = 'AGENT'${bookingScope}) AS agentBookingsToday,
+          (SELECT COALESCE(SUM(cb.total_amount), 0) FROM central_bookings cb WHERE DATE(cb.created_at) = CURRENT_DATE() AND cb.status = 'CONFIRMED'${bookingScope}) AS totalCollection,
+          (SELECT COUNT(*) FROM shows WHERE DATE(show_time) = CURRENT_DATE() AND authority_mode = 'RETURNING_TO_CENTRAL'${showScope}) AS returningToCentralCount,
+          (SELECT COUNT(*) FROM shows WHERE DATE(show_time) = CURRENT_DATE() AND authority_mode = 'LOCAL_AUTHORITY_OFFLINE'${showScope}) AS localAuthorityOfflineCount,
+          (SELECT COALESCE(SUM(pending_local_events), 0) FROM theatre_heartbeats WHERE trusted_for_admin_sync = 1${heartbeatScope}) AS pendingSyncEvents,
+          (SELECT COALESCE(SUM(failed_local_events), 0) FROM theatre_heartbeats WHERE trusted_for_admin_sync = 1${heartbeatScope}) AS failedSyncEvents,
+          (SELECT COUNT(*) FROM agent_clients WHERE status = 'ACTIVE') AS activeAgents,
+          (SELECT MAX(source_sequence_no) FROM central_sync_inbox${inboxScope}) AS latestReceivedLocalSequenceNo,
+          (SELECT MAX(sequence_no) FROM central_mirror_events${mirrorScope}) AS latestCentralMirrorSequenceNo
+      `, summaryParams),
+      getCentralDbPool().query<RowDataPacket[]>(`
+        SELECT s.id AS showId, m.title AS movieTitle, COALESCE(st.authority_mode, s.authority_mode) AS authorityMode,
+               st.local_heartbeat_at AS localHeartbeatAt, COALESCE(st.pending_sync_events, 0) AS pendingSyncEvents,
+               COALESCE(st.failed_sync_events, 0) AS failedSyncEvents
+        FROM shows s
+        JOIN movies m ON m.id = s.movie_id
+        LEFT JOIN show_authority_state st ON st.show_id = s.id
+        WHERE DATE(s.show_time) = CURRENT_DATE()${theatreId ? ' AND s.theatre_id = ?' : ''}
+        ORDER BY s.show_time
+      `, authorityParams),
+      getCentralDbPool().query<RowDataPacket[]>(`
+        SELECT theatre_id AS theatreId, local_app_url AS localAppUrl, authority_mode AS authorityMode,
+               last_local_sequence AS lastLocalSequence, last_central_mirror_sequence AS lastCentralMirrorSequence,
+               pending_local_events AS pendingLocalEvents, failed_local_events AS failedLocalEvents, status, last_seen_at AS lastSeenAt,
+               CASE
+                 WHEN status = 'OFFLINE' OR last_seen_at < DATE_SUB(NOW(), INTERVAL 60 SECOND) THEN 'OFFLINE'
+                 WHEN last_seen_at < DATE_SUB(NOW(), INTERVAL 30 SECOND) THEN 'STALE'
+                 ELSE 'ONLINE'
+               END AS localHeartbeatStatus
+        FROM theatre_heartbeats
+        ${theatreId ? 'WHERE theatre_id = ?' : ''}
+        ORDER BY last_seen_at DESC
+      `, heartbeatParams)
+    ]);
+    const [[summary]] = summaryResult;
+    const [authorityRows] = authorityResult;
+    const [heartbeatRows] = heartbeatResult;
 
     return {
       totalShowsToday: Number(summary.totalShowsToday ?? 0),
@@ -958,23 +974,26 @@ export async function getSeatLayouts() {
       JOIN theatres t ON t.id = sc.theatre_id
       ORDER BY t.name, sc.name, l.name
     `);
-    const output: SeatLayoutSummary[] = [];
-    for (const layout of layouts) {
-      const [zoneRows] = await getCentralDbPool().query<RowDataPacket[]>(`
-        SELECT zone_code AS zone, MAX(amount) AS amount FROM show_pricing sp
-        JOIN shows s ON s.id = sp.show_id
-        WHERE s.layout_id = ?
-        GROUP BY zone_code
-        ORDER BY amount DESC
-      `, [layout.id]);
-      const [cellRows] = await getCentralDbPool().query<RowDataPacket[]>(`
-        SELECT seat_id AS cellId, CASE WHEN item_type = 'BLOCKED' THEN 'SEAT' ELSE item_type END AS kind, row_label AS rowLabel, display_order AS displayOrder,
-               seat_id AS seatId, seat_number AS seatNumber, zone_code AS zone, accessibility, NULL AS amount,
-               CASE WHEN is_blocked = TRUE OR item_type = 'BLOCKED' THEN 'BLOCKED' ELSE 'AVAILABLE' END AS seatStatus
-        FROM seat_layout_seats
-        WHERE layout_id = ?
-        ORDER BY row_sort, row_label, display_order
-      `, [layout.id]);
+    const output = await Promise.all(layouts.map(async (layout) => {
+      const [zoneResult, cellResult] = await Promise.all([
+        getCentralDbPool().query<RowDataPacket[]>(`
+          SELECT zone_code AS zone, MAX(amount) AS amount FROM show_pricing sp
+          JOIN shows s ON s.id = sp.show_id
+          WHERE s.layout_id = ?
+          GROUP BY zone_code
+          ORDER BY amount DESC
+        `, [layout.id]),
+        getCentralDbPool().query<RowDataPacket[]>(`
+          SELECT seat_id AS cellId, CASE WHEN item_type = 'BLOCKED' THEN 'SEAT' ELSE item_type END AS kind, row_label AS rowLabel, display_order AS displayOrder,
+                 seat_id AS seatId, seat_number AS seatNumber, zone_code AS zone, accessibility, NULL AS amount,
+                 CASE WHEN is_blocked = TRUE OR item_type = 'BLOCKED' THEN 'BLOCKED' ELSE 'AVAILABLE' END AS seatStatus
+          FROM seat_layout_seats
+          WHERE layout_id = ?
+          ORDER BY row_sort, row_label, display_order
+        `, [layout.id])
+      ]);
+      const [zoneRows] = zoneResult;
+      const [cellRows] = cellResult;
       const rowMap = new Map<string, SeatCell[]>();
       const cellMap = new Map<string, SeatCell>();
       let totalSeats = 0;
@@ -1033,7 +1052,7 @@ export async function getSeatLayouts() {
           };
         })
         : Array.from(rowMap, ([rowLabel, cells], index) => ({ rowKey: `row-${rowLabel}-${index}`, rowLabel, cells }));
-      output.push({
+      return {
         id: String(layout.id),
         name: String(layout.name),
         theatreName: String(layout.theatreName),
@@ -1042,8 +1061,8 @@ export async function getSeatLayouts() {
         rows,
         totalSeats,
         gapCount
-      });
-    }
+      };
+    }));
     return output;
   });
 }

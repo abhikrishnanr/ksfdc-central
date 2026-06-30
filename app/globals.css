@@ -3588,8 +3588,24 @@ body:has(.checker-login-page) .page-frame { width: 100%; max-width: none; paddin
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45), inset 0 -1px 0 rgba(41, 211, 173, 0.12);
 }
 
+.hero-background-image {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  object-fit: cover;
+  object-position: center 28%;
+}
+
+.hero-background-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(90deg, rgba(4,8,14,0.98), rgba(4,8,14,0.42), rgba(4,8,14,0.9));
+  pointer-events: none;
+}
+
 .hero-movie-copy { gap: 0.8rem; padding-left: 4.5rem; }
-.hero-poster-link { position: absolute; inset: 0; z-index: 0; }
+.hero-poster-link { position: absolute; inset: 0; z-index: 1; }
 .hero-movie-copy,
 .hero-arrow,
 .hero-dots { z-index: 2; }
@@ -3701,6 +3717,7 @@ body:has(.checker-login-page) .page-frame { width: 100%; max-width: none; paddin
   .theatre-network-card { order: 3; }
   .notices-card { order: 4; }
   .ksfdc-hero-carousel { min-height: 370px; border-left-width: 1px; padding: 1rem; background-position: center 18%; }
+  .hero-background-image { object-position: center 18%; }
   .hero-movie-copy { gap: 0.65rem; padding: 0 0 1.5rem; }
   .hero-movie-copy h1 { max-width: 94%; font-size: 2.65rem; line-height: 0.98; }
   .hero-movie-copy p { font-size: 0.72rem; }

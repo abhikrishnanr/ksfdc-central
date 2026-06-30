@@ -397,7 +397,9 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
 
   useEffect(() => {
     if (!holdExpiresAt || holdRemainingMs > 0) return;
-    const timer = window.setTimeout(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
       setHoldExpiresAt(null);
       setSelected([]);
       setAuthStep('READY');
@@ -405,8 +407,10 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
       setMessage(null);
       setAlert({ title: 'Seat hold expired', message: 'Your seat hold expired. Please select seats again.' });
       router.refresh();
-    }, 0);
-    return () => window.clearTimeout(timer);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [holdExpiresAt, holdRemainingMs, router]);
 
   function closeAuthModal() {
@@ -497,7 +501,6 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
     setProgressPhase('CONNECTING');
 
     startTransition(async () => {
-      const holdingTimer = window.setTimeout(() => setProgressPhase('HOLDING'), 450);
       const response = await fetch('/api/bookings/hold', {
         method: 'POST',
         headers: {
@@ -512,7 +515,6 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
       });
 
       const payload = await response.json();
-      window.clearTimeout(holdingTimer);
 
       if (!response.ok) {
         if (payload.reason === 'PUBLIC_EMAIL_VERIFICATION_REQUIRED') {
@@ -597,8 +599,6 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
         },
         handler: async (razorpayResponse: Record<string, string>) => {
           setProgressPhase('PAYMENT_SUCCESS');
-          await new Promise((resolve) => window.setTimeout(resolve, 650));
-          setProgressPhase('CONFIRMING');
           const verifyResponse = await fetch('/api/payments/razorpay/verify', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
@@ -627,7 +627,7 @@ export default function BookingSeatPicker({ show }: { show: BookingShowDetail })
           setHoldExpiresAt(null);
           setProgressDetail(null);
           setProgressPhase('SUCCESS');
-          window.setTimeout(() => router.push(`/ticket/${verifyPayload.bookingId}`), 900);
+          router.push(`/ticket/${verifyPayload.bookingId}`);
         },
         modal: {
           ondismiss: async () => {

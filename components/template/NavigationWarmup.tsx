@@ -15,8 +15,8 @@ export default function NavigationWarmup() {
       const id = idleWindow.requestIdleCallback(warm);
       return () => idleWindow.cancelIdleCallback?.(id);
     }
-    const id = window.setTimeout(warm, 350);
-    return () => window.clearTimeout(id);
+    const id = window.requestAnimationFrame(warm);
+    return () => window.cancelAnimationFrame(id);
   }, [router]);
 
   return null;

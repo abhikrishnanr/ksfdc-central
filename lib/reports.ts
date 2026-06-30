@@ -109,42 +109,44 @@ export async function getCentralRevenueReport(theatreId?: string | null) {
   const bookingScope = theatreId ? ' AND s.theatre_id = ?' : '';
   const paymentParams = theatreId ? [theatreId] : [];
   const bookingParams = theatreId ? [theatreId] : [];
-  const [paymentRows] = await getCentralDbPool().query<RowDataPacket[]>(
-    `SELECT provider, payment_mode AS paymentMode, channel, status, COUNT(*) AS payments, COALESCE(SUM(amount), 0) AS amount
-     FROM payments p
-     WHERE DATE(p.created_at) = CURRENT_DATE()${paymentScope}
-     GROUP BY provider, payment_mode, channel, status
-     ORDER BY channel, payment_mode, status`,
-    paymentParams
-  ).catch(() => [[] as RowDataPacket[]]);
-  const [channelRows] = await getCentralDbPool().query<RowDataPacket[]>(
-    `SELECT channel, COUNT(*) AS bookings, COALESCE(SUM(total_amount), 0) AS revenue
-     FROM central_bookings b
-     JOIN shows s ON s.id = b.show_id
-     WHERE DATE(b.created_at) = CURRENT_DATE() AND b.status = 'CONFIRMED'${bookingScope}
-     GROUP BY channel`,
-    bookingParams
-  );
-  const [showRows] = await getCentralDbPool().query<RowDataPacket[]>(
-    `SELECT b.show_id AS showId, m.title AS movieTitle, COUNT(*) AS bookings, COALESCE(SUM(b.total_amount), 0) AS revenue
-     FROM central_bookings b
-     JOIN shows s ON s.id = b.show_id
-     JOIN movies m ON m.id = s.movie_id
-     WHERE DATE(b.created_at) = CURRENT_DATE() AND b.status = 'CONFIRMED'${bookingScope}
-     GROUP BY b.show_id, m.title
-     ORDER BY b.show_id`,
-    bookingParams
-  );
-  const [theatreRows] = await getCentralDbPool().query<RowDataPacket[]>(
-    `SELECT s.theatre_id AS theatreId, t.name AS theatreName, COUNT(*) AS bookings, COALESCE(SUM(b.total_amount), 0) AS revenue
-     FROM central_bookings b
-     JOIN shows s ON s.id = b.show_id
-     JOIN theatres t ON t.id = s.theatre_id
-     WHERE DATE(b.created_at) = CURRENT_DATE() AND b.status = 'CONFIRMED'${bookingScope}
-     GROUP BY s.theatre_id, t.name
-     ORDER BY s.theatre_id`,
-    bookingParams
-  );
+  const [paymentRows, channelRows, showRows, theatreRows] = await Promise.all([
+    getCentralDbPool().query<RowDataPacket[]>(
+      `SELECT provider, payment_mode AS paymentMode, channel, status, COUNT(*) AS payments, COALESCE(SUM(amount), 0) AS amount
+       FROM payments p
+       WHERE DATE(p.created_at) = CURRENT_DATE()${paymentScope}
+       GROUP BY provider, payment_mode, channel, status
+       ORDER BY channel, payment_mode, status`,
+      paymentParams
+    ).then(([rows]) => rows).catch(() => [] as RowDataPacket[]),
+    getCentralDbPool().query<RowDataPacket[]>(
+      `SELECT channel, COUNT(*) AS bookings, COALESCE(SUM(total_amount), 0) AS revenue
+       FROM central_bookings b
+       JOIN shows s ON s.id = b.show_id
+       WHERE DATE(b.created_at) = CURRENT_DATE() AND b.status = 'CONFIRMED'${bookingScope}
+       GROUP BY channel`,
+      bookingParams
+    ).then(([rows]) => rows),
+    getCentralDbPool().query<RowDataPacket[]>(
+      `SELECT b.show_id AS showId, m.title AS movieTitle, COUNT(*) AS bookings, COALESCE(SUM(b.total_amount), 0) AS revenue
+       FROM central_bookings b
+       JOIN shows s ON s.id = b.show_id
+       JOIN movies m ON m.id = s.movie_id
+       WHERE DATE(b.created_at) = CURRENT_DATE() AND b.status = 'CONFIRMED'${bookingScope}
+       GROUP BY b.show_id, m.title
+       ORDER BY b.show_id`,
+      bookingParams
+    ).then(([rows]) => rows),
+    getCentralDbPool().query<RowDataPacket[]>(
+      `SELECT s.theatre_id AS theatreId, t.name AS theatreName, COUNT(*) AS bookings, COALESCE(SUM(b.total_amount), 0) AS revenue
+       FROM central_bookings b
+       JOIN shows s ON s.id = b.show_id
+       JOIN theatres t ON t.id = s.theatre_id
+       WHERE DATE(b.created_at) = CURRENT_DATE() AND b.status = 'CONFIRMED'${bookingScope}
+       GROUP BY s.theatre_id, t.name
+       ORDER BY s.theatre_id`,
+      bookingParams
+    ).then(([rows]) => rows)
+  ]);
 
   const byChannel = {
     CENTRAL: { bookings: 0, revenue: 0 },
@@ -212,41 +214,45 @@ export async function getReconciliationDetail(showId: string, theatreIdScope?: s
   }
 
   const theatreId = String(show.theatreId);
-  const [centralSeats] = await getCentralDbPool().query<RowDataPacket[]>(
-    `SELECT seat_id AS seatId, booking_id AS bookingId, channel, amount
-     FROM central_confirmed_seats
-     WHERE show_id = ?
-     ORDER BY seat_id`,
-    [showId]
-  );
-  const [localEventRows] = await getCentralDbPool().query<RowDataPacket[]>(
-    `SELECT event_id AS eventId, sequence_no AS sequenceNo, payload
-     FROM central_received_local_events
-     WHERE theatre_id = ? AND show_id = ? AND event_type = 'BOOKING_CREATED'
-     ORDER BY sequence_no`,
-    [theatreId, showId]
-  );
-  const [conflictRows] = await getCentralDbPool().query<RowDataPacket[]>(
-    `SELECT event_id AS eventId, source_sequence_no AS sequenceNo, show_id AS showId, seat_id AS seatId,
-            existing_booking_id AS existingBookingId, incoming_booking_id AS incomingBookingId,
-            conflict_type AS conflictType, error_message AS errorMessage, created_at AS createdAt
-     FROM central_sync_conflicts
-     WHERE show_id = ?
-     ORDER BY created_at DESC`,
-    [showId]
-  );
-  const [[heartbeat]] = await getCentralDbPool().query<RowDataPacket[]>(
-    `SELECT pending_local_events AS pendingEvents, failed_local_events AS failedEvents, last_local_sequence AS lastLocalSequence
-     FROM theatre_heartbeats
-     WHERE theatre_id = ? AND trusted_for_admin_sync = 1
-     ORDER BY last_seen_at DESC
-     LIMIT 1`,
-    [theatreId]
-  );
-  const [[syncedSequence]] = await getCentralDbPool().query<RowDataPacket[]>(
-    'SELECT COALESCE(MAX(source_sequence_no), 0) AS lastSyncedSequence FROM central_sync_inbox WHERE theatre_id = ?',
-    [theatreId]
-  );
+  const [centralSeats, localEventRows, conflictRows, heartbeatRows, syncedSequenceRows] = await Promise.all([
+    getCentralDbPool().query<RowDataPacket[]>(
+      `SELECT seat_id AS seatId, booking_id AS bookingId, channel, amount
+       FROM central_confirmed_seats
+       WHERE show_id = ?
+       ORDER BY seat_id`,
+      [showId]
+    ).then(([rows]) => rows),
+    getCentralDbPool().query<RowDataPacket[]>(
+      `SELECT event_id AS eventId, sequence_no AS sequenceNo, payload
+       FROM central_received_local_events
+       WHERE theatre_id = ? AND show_id = ? AND event_type = 'BOOKING_CREATED'
+       ORDER BY sequence_no`,
+      [theatreId, showId]
+    ).then(([rows]) => rows),
+    getCentralDbPool().query<RowDataPacket[]>(
+      `SELECT event_id AS eventId, source_sequence_no AS sequenceNo, show_id AS showId, seat_id AS seatId,
+              existing_booking_id AS existingBookingId, incoming_booking_id AS incomingBookingId,
+              conflict_type AS conflictType, error_message AS errorMessage, created_at AS createdAt
+       FROM central_sync_conflicts
+       WHERE show_id = ?
+       ORDER BY created_at DESC`,
+      [showId]
+    ).then(([rows]) => rows),
+    getCentralDbPool().query<RowDataPacket[]>(
+      `SELECT pending_local_events AS pendingEvents, failed_local_events AS failedEvents, last_local_sequence AS lastLocalSequence
+       FROM theatre_heartbeats
+       WHERE theatre_id = ? AND trusted_for_admin_sync = 1
+       ORDER BY last_seen_at DESC
+       LIMIT 1`,
+      [theatreId]
+    ).then(([rows]) => rows),
+    getCentralDbPool().query<RowDataPacket[]>(
+      'SELECT COALESCE(MAX(source_sequence_no), 0) AS lastSyncedSequence FROM central_sync_inbox WHERE theatre_id = ?',
+      [theatreId]
+    ).then(([rows]) => rows)
+  ]);
+  const [heartbeat] = heartbeatRows;
+  const [syncedSequence] = syncedSequenceRows;
 
   const centralBySeat = new Map(centralSeats.map((seat) => [String(seat.seatId), String(seat.bookingId)]));
   const centralByBooking = new Set(centralSeats.map((seat) => String(seat.bookingId)));
@@ -339,10 +345,7 @@ export async function getReconciliationReport(theatreId?: string | null) {
     `SELECT id AS showId FROM shows WHERE DATE(show_time) = CURRENT_DATE()${theatreId ? ' AND theatre_id = ?' : ''} ORDER BY show_time`,
     theatreId ? [theatreId] : []
   );
-  const details = [];
-  for (const show of shows) {
-    details.push(await getReconciliationDetail(String(show.showId), theatreId));
-  }
+  const details = await Promise.all(shows.map((show) => getReconciliationDetail(String(show.showId), theatreId)));
   return details.map((detail) => ({
     showId: detail.showId,
     theatreId: detail.theatreId,

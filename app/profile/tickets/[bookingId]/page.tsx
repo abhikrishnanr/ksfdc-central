@@ -30,9 +30,8 @@ function groupItems(items: RowDataPacket[]) {
 }
 
 export default async function ProfileTicketDetailPage({ params }: { params: Promise<{ bookingId: string }> }) {
-  const session = await getPublicSession();
+  const [{ bookingId }, session] = await Promise.all([params, getPublicSession()]);
   if (!session) redirect('/profile');
-  const { bookingId } = await params;
   await ensureCentralSyncInbox();
 
   const [[booking]] = await getCentralDbPool().query<RowDataPacket[]>(
@@ -51,15 +50,19 @@ export default async function ProfileTicketDetailPage({ params }: { params: Prom
   );
   if (!booking) notFound();
 
-  const [items] = await getCentralDbPool().query<RowDataPacket[]>(
-    'SELECT seat_id AS seatId, MAX(zone) AS zone, MAX(amount) AS amount FROM central_booking_items WHERE booking_id = ? GROUP BY seat_id ORDER BY zone, seat_id',
-    [bookingId]
-  );
-  const groups = groupItems(items);
   const showId = String(booking.showId);
+  const [itemsResult, seatLayoutResult] = await Promise.all([
+    getCentralDbPool().query<RowDataPacket[]>(
+      'SELECT seat_id AS seatId, MAX(zone) AS zone, MAX(amount) AS amount FROM central_booking_items WHERE booking_id = ? GROUP BY seat_id ORDER BY zone, seat_id',
+      [bookingId]
+    ),
+    getBookingShow(showId)
+  ]);
+  const [items] = itemsResult;
+  const groups = groupItems(items);
   const token = ticketToken(String(booking.id), showId);
   const baseUrl = process.env.NEXT_PUBLIC_CENTRAL_APP_URL?.replace(/\/$/, '') ?? '';
-  const { data: seatLayout } = await getBookingShow(showId);
+  const { data: seatLayout } = seatLayoutResult;
 
   return (
     <main className="grid" style={{ gap: 24 }}>

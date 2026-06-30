@@ -32,10 +32,15 @@ export default async function CentralTicketPage({ params }: { params: Promise<{ 
   );
   if (!booking) notFound();
 
-  const [items] = await getCentralDbPool().query<RowDataPacket[]>(
-    'SELECT seat_id AS seatId, MAX(zone) AS zone, MAX(amount) AS amount FROM central_booking_items WHERE booking_id = ? GROUP BY seat_id ORDER BY zone ASC, seat_id ASC',
-    [bookingId]
-  );
+  const showId = String(booking.showId);
+  const [itemsResult, seatLayoutResult] = await Promise.all([
+    getCentralDbPool().query<RowDataPacket[]>(
+      'SELECT seat_id AS seatId, MAX(zone) AS zone, MAX(amount) AS amount FROM central_booking_items WHERE booking_id = ? GROUP BY seat_id ORDER BY zone ASC, seat_id ASC',
+      [bookingId]
+    ),
+    getBookingShow(showId)
+  ]);
+  const [items] = itemsResult;
   const groups = new Map<string, { zone: string; seats: string[]; amount: number }>();
   for (const item of items) {
     const zone = String(item.zone);
@@ -44,7 +49,6 @@ export default async function CentralTicketPage({ params }: { params: Promise<{ 
     group.amount += Number(item.amount ?? 0);
     groups.set(zone, group);
   }
-  const showId = String(booking.showId);
   const token = createTicketVerificationToken(String(booking.id), showId);
   const baseUrl = process.env.NEXT_PUBLIC_CENTRAL_APP_URL?.replace(/\/$/, '') ?? '';
   const verificationUrl = `${baseUrl}/ticket/${String(booking.id)}?verify=${token}`;
@@ -68,7 +72,7 @@ export default async function CentralTicketPage({ params }: { params: Promise<{ 
     verificationToken: token,
     groups: Array.from(groups.values()) as ShareableTicketSeatGroup[]
   };
-  const { data: seatLayout } = await getBookingShow(showId);
+  const { data: seatLayout } = seatLayoutResult;
 
   return <ShareableTicketCard ticket={ticket} seatLayout={seatLayout} />;
 }
